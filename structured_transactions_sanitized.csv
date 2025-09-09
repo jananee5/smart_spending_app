@@ -1,0 +1,271 @@
+datetime,year,month,month_name,day,weekday,transaction_type,is_expense,is_income,amount,merchant,spend_category,status,transaction_id
+2025-08-07 10:53:02,2025,8,August,7,Thursday,Paid,True,False,1471.65,Merchant_1,Other,Completed,TXN0001
+2025-08-07 11:32:26,2025,8,August,7,Thursday,Received,False,True,1625.68,Merchant_2,Other,Failed,TXN0002
+2025-08-07 11:57:46,2025,8,August,7,Thursday,Paid,True,False,258.35,Merchant_3,Other,Completed,TXN0003
+2025-08-08 13:48:33,2025,8,August,8,Friday,Received,False,True,10.85,Merchant_2,Other,Failed,TXN0004
+2025-08-10 10:49:50,2025,8,August,10,Sunday,Paid,True,False,230.04,Merchant_4,Groceries,Failed,TXN0005
+2025-08-10 12:34:40,2025,8,August,10,Sunday,Paid,True,False,23.62,Merchant_5,Other,Completed,TXN0006
+2025-08-10 15:25:33,2025,8,August,10,Sunday,Paid,True,False,481.73,Merchant_6,Other,Completed,TXN0007
+2025-08-11 12:08:47,2025,8,August,11,Monday,Paid,True,False,9.21,Merchant_6,Other,Completed,TXN0008
+2025-08-11 19:57:27,2025,8,August,11,Monday,Paid,True,False,432.68,Merchant_7,Other,Completed,TXN0009
+2025-08-12 17:10:16,2025,8,August,12,Tuesday,Paid,True,False,458.37,Merchant_8,Other,Completed,TXN0010
+2025-08-13 13:42:25,2025,8,August,13,Wednesday,Paid,True,False,294.14,Merchant_9,Other,Completed,TXN0011
+2025-08-14 12:42:11,2025,8,August,14,Thursday,Paid,True,False,256.49,Merchant_10,Other,Completed,TXN0012
+2025-08-15 12:26:02,2025,8,August,15,Friday,Paid,True,False,87.92,Merchant_11,Other,Completed,TXN0013
+2025-08-16 18:59:37,2025,8,August,16,Saturday,Paid,True,False,243.78,Merchant_12,Food Delivery,Completed,TXN0014
+2025-08-17 14:31:09,2025,8,August,17,Sunday,Paid,True,False,302.57,Merchant_12,Food Delivery,Completed,TXN0015
+2025-08-17 15:18:54,2025,8,August,17,Sunday,Paid,True,False,282.54,Merchant_12,Food Delivery,Completed,TXN0016
+2025-08-17 19:28:01,2025,8,August,17,Sunday,Paid,True,False,682.4,Merchant_13,Other,Completed,TXN0017
+2025-08-17 20:26:10,2025,8,August,17,Sunday,Paid,True,False,964.64,Merchant_13,Other,Completed,TXN0018
+2025-08-17 20:57:16,2025,8,August,17,Sunday,Paid,True,False,221.44,Merchant_12,Food Delivery,Completed,TXN0019
+2025-08-17 22:10:48,2025,8,August,17,Sunday,Paid,True,False,401.73,Merchant_8,Other,Completed,TXN0020
+2025-08-18 08:56:36,2025,8,August,18,Monday,Paid,True,False,327.17,Merchant_4,Groceries,Completed,TXN0021
+2025-08-18 11:44:31,2025,8,August,18,Monday,Paid,True,False,6007.76,Merchant_14,Other,Completed,TXN0022
+2025-08-18 11:49:41,2025,8,August,18,Monday,Received,False,True,7138.97,Merchant_2,Other,Completed,TXN0023
+2025-08-18 18:08:53,2025,8,August,18,Monday,Received,False,True,157.06,Merchant_2,Other,Completed,TXN0024
+2025-08-19 10:35:03,2025,8,August,19,Tuesday,Paid,True,False,689.71,Merchant_15,Other,Completed,TXN0025
+2025-08-20 10:52:24,2025,8,August,20,Wednesday,Paid,True,False,941.96,Merchant_10,Other,Completed,TXN0026
+2025-08-20 15:02:48,2025,8,August,20,Wednesday,Paid,True,False,226.19,Merchant_12,Food Delivery,Completed,TXN0027
+2025-08-21 13:35:41,2025,8,August,21,Thursday,Paid,True,False,490.49,Merchant_12,Food Delivery,Completed,TXN0028
+2025-08-21 13:59:01,2025,8,August,21,Thursday,Paid,True,False,205.72,Merchant_10,Other,Completed,TXN0029
+2025-08-23 13:54:43,2025,8,August,23,Saturday,Paid,True,False,323.26,Merchant_16,Other,Completed,TXN0030
+2025-08-23 15:19:00,2025,8,August,23,Saturday,Paid,True,False,258.38,Merchant_17,Other,Completed,TXN0031
+2025-08-23 15:19:14,2025,8,August,23,Saturday,Paid,True,False,192.74,Merchant_17,Other,Completed,TXN0032
+2025-08-23 15:19:37,2025,8,August,23,Saturday,Paid,True,False,230.25,Merchant_17,Other,Completed,TXN0033
+2025-08-23 15:19:50,2025,8,August,23,Saturday,Paid,True,False,247.58,Merchant_17,Other,Completed,TXN0034
+2025-08-23 15:20:03,2025,8,August,23,Saturday,Paid,True,False,223.89,Merchant_17,Other,Completed,TXN0035
+2025-08-23 15:20:16,2025,8,August,23,Saturday,Paid,True,False,239.36,Merchant_17,Other,Completed,TXN0036
+2025-08-23 19:21:54,2025,8,August,23,Saturday,Paid,True,False,185.93,Merchant_12,Food Delivery,Completed,TXN0037
+2025-08-24 09:12:08,2025,8,August,24,Sunday,Paid,True,False,283.48,Merchant_8,Other,Completed,TXN0038
+2025-08-25 17:56:37,2025,8,August,25,Monday,Paid,True,False,221.02,Merchant_4,Groceries,Completed,TXN0039
+2025-08-26 19:15:38,2025,8,August,26,Tuesday,Paid,True,False,159.07,Merchant_18,Other,Completed,TXN0040
+2025-08-27 09:12:04,2025,8,August,27,Wednesday,Paid,True,False,294.28,Merchant_6,Other,Completed,TXN0041
+2025-08-27 10:14:47,2025,8,August,27,Wednesday,Paid,True,False,472.06,Merchant_19,Other,Completed,TXN0042
+2025-08-27 10:35:05,2025,8,August,27,Wednesday,Paid,True,False,47.57,Merchant_20,Other,Completed,TXN0043
+2025-08-27 12:46:30,2025,8,August,27,Wednesday,Paid,True,False,420.17,Merchant_10,Other,Completed,TXN0044
+2025-08-27 17:49:21,2025,8,August,27,Wednesday,Paid,True,False,260.23,Merchant_21,Other,Completed,TXN0045
+2025-08-28 13:13:19,2025,8,August,28,Thursday,Received,False,True,1562.06,Merchant_2,Other,Completed,TXN0046
+2025-08-29 08:49:08,2025,8,August,29,Friday,Paid,True,False,212.41,Merchant_12,Food Delivery,Completed,TXN0047
+2025-08-29 16:59:13,2025,8,August,29,Friday,Paid,True,False,233.56,Merchant_22,Other,Completed,TXN0048
+2025-08-29 18:11:35,2025,8,August,29,Friday,Received,False,True,40582.19,Merchant_2,Other,Completed,TXN0049
+2025-08-30 07:37:50,2025,8,August,30,Saturday,Paid,True,False,218.92,Merchant_4,Groceries,Completed,TXN0050
+2025-08-30 19:47:11,2025,8,August,30,Saturday,Paid,True,False,2699.14,Merchant_8,Other,Completed,TXN0051
+2025-08-31 08:55:48,2025,8,August,31,Sunday,Paid,True,False,414.34,Merchant_23,Other,Completed,TXN0052
+2025-08-31 16:55:11,2025,8,August,31,Sunday,Paid,True,False,363.17,Merchant_24,Other,Completed,TXN0053
+2025-08-31 19:35:42,2025,8,August,31,Sunday,Paid,True,False,281.89,Merchant_10,Other,Completed,TXN0054
+2025-09-01 14:59:37,2025,9,September,1,Monday,Paid,True,False,455.08,Merchant_25,Other,Completed,TXN0055
+2025-09-03 14:46:41,2025,9,September,3,Wednesday,Received,False,True,5923.2,Merchant_2,Other,Completed,TXN0056
+2025-09-03 14:56:02,2025,9,September,3,Wednesday,Paid,True,False,432.81,Merchant_12,Food Delivery,Completed,TXN0057
+2025-09-03 22:38:07,2025,9,September,3,Wednesday,Paid,True,False,229.65,Merchant_26,Other,Completed,TXN0058
+2025-09-04 11:20:49,2025,9,September,4,Thursday,Paid,True,False,323.15,Merchant_27,Other,Completed,TXN0059
+2025-09-05 11:51:29,2025,9,September,5,Friday,Received,False,True,61.66,Merchant_2,Other,Completed,TXN0060
+2025-09-05 15:01:38,2025,9,September,5,Friday,Paid,True,False,465.72,Merchant_25,Other,Completed,TXN0061
+2025-09-06 15:11:57,2025,9,September,6,Saturday,Paid,True,False,496.1,Merchant_28,Other,Completed,TXN0062
+2025-09-06 18:14:32,2025,9,September,6,Saturday,Paid,True,False,209.51,Merchant_12,Food Delivery,Completed,TXN0063
+2025-09-07 09:01:29,2025,9,September,7,Sunday,Paid,True,False,291.97,Merchant_4,Groceries,Completed,TXN0064
+2025-09-07 09:03:23,2025,9,September,7,Sunday,Paid,True,False,458.82,Merchant_15,Other,Completed,TXN0065
+2025-09-07 10:53:30,2025,9,September,7,Sunday,Paid,True,False,260.95,Merchant_4,Groceries,Completed,TXN0066
+2025-09-08 21:15:11,2025,9,September,8,Monday,Paid,True,False,164.24,Merchant_12,Food Delivery,Completed,TXN0067
+2025-09-09 15:07:14,2025,9,September,9,Tuesday,Paid,True,False,60.1,Merchant_29,Other,Completed,TXN0068
+2025-09-09 15:58:50,2025,9,September,9,Tuesday,Paid,True,False,1.05,Merchant_30,Other,Completed,TXN0069
+2025-09-09 15:59:39,2025,9,September,9,Tuesday,Paid,True,False,0.99,Merchant_30,Other,Failed,TXN0070
+2025-09-09 15:59:53,2025,9,September,9,Tuesday,Paid,True,False,0.99,Merchant_30,Other,Failed,TXN0071
+2025-09-09 18:38:13,2025,9,September,9,Tuesday,Paid,True,False,81.34,Merchant_6,Other,Completed,TXN0072
+2025-09-09 20:26:57,2025,9,September,9,Tuesday,Paid,True,False,234.26,Merchant_4,Groceries,Completed,TXN0073
+2025-09-09 20:29:56,2025,9,September,9,Tuesday,Paid,True,False,226.82,Merchant_4,Groceries,Completed,TXN0074
+2025-09-10 09:30:31,2025,9,September,10,Wednesday,Paid,True,False,235.22,Merchant_4,Groceries,Completed,TXN0075
+2025-09-10 17:44:44,2025,9,September,10,Wednesday,Paid,True,False,730.23,Merchant_31,Other,Completed,TXN0076
+2025-09-11 10:41:59,2025,9,September,11,Thursday,Paid,True,False,283.36,Merchant_4,Groceries,Completed,TXN0077
+2025-09-12 13:27:42,2025,9,September,12,Friday,Paid,True,False,352.2,Merchant_12,Food Delivery,Completed,TXN0078
+2025-09-13 13:04:26,2025,9,September,13,Saturday,Paid,True,False,264.21,Merchant_12,Food Delivery,Completed,TXN0079
+2025-09-13 15:13:02,2025,9,September,13,Saturday,Paid,True,False,466.2,Merchant_4,Groceries,Completed,TXN0080
+2025-09-13 19:55:28,2025,9,September,13,Saturday,Received,False,True,10566.98,Merchant_2,Other,Completed,TXN0081
+2025-09-14 09:13:02,2025,9,September,14,Sunday,Paid,True,False,389.8,Merchant_32,Other,Completed,TXN0082
+2025-09-14 09:21:18,2025,9,September,14,Sunday,Paid,True,False,141.15,Merchant_33,Other,Completed,TXN0083
+2025-09-14 16:21:37,2025,9,September,14,Sunday,Paid,True,False,234.72,Merchant_4,Groceries,Completed,TXN0084
+2025-09-15 10:54:56,2025,9,September,15,Monday,Paid,True,False,323.79,Merchant_12,Food Delivery,Completed,TXN0085
+2025-09-16 08:51:43,2025,9,September,16,Tuesday,Paid,True,False,606.4,Merchant_15,Other,Completed,TXN0086
+2025-09-16 09:01:52,2025,9,September,16,Tuesday,Paid,True,False,55.79,Merchant_32,Other,Completed,TXN0087
+2025-09-16 12:30:43,2025,9,September,16,Tuesday,Paid,True,False,703.94,Merchant_13,Other,Completed,TXN0088
+2025-09-16 15:30:44,2025,9,September,16,Tuesday,Received,False,True,72.92,Merchant_2,Other,Completed,TXN0089
+2025-09-16 17:07:19,2025,9,September,16,Tuesday,Paid,True,False,64.32,Merchant_34,Other,Completed,TXN0090
+2025-09-16 22:17:58,2025,9,September,16,Tuesday,Paid,True,False,381.95,Merchant_12,Food Delivery,Completed,TXN0091
+2025-09-17 16:20:26,2025,9,September,17,Wednesday,Paid,True,False,306.36,Merchant_4,Groceries,Completed,TXN0092
+2025-09-17 19:23:14,2025,9,September,17,Wednesday,Paid,True,False,911.29,Merchant_17,Other,Completed,TXN0093
+2025-09-17 19:58:24,2025,9,September,17,Wednesday,Paid,True,False,241.93,Merchant_12,Food Delivery,Completed,TXN0094
+2025-09-18 09:15:00,2025,9,September,18,Thursday,Paid,True,False,206.46,Merchant_4,Groceries,Completed,TXN0095
+2025-09-18 17:25:28,2025,9,September,18,Thursday,Paid,True,False,282.88,Merchant_35,Other,Completed,TXN0096
+2025-09-18 17:25:40,2025,9,September,18,Thursday,Paid,True,False,285.58,Merchant_35,Other,Completed,TXN0097
+2025-09-18 17:48:03,2025,9,September,18,Thursday,Paid,True,False,218.08,Merchant_35,Other,Completed,TXN0098
+2025-09-19 17:36:50,2025,9,September,19,Friday,Paid,True,False,49.28,Merchant_34,Other,Completed,TXN0099
+2025-09-19 18:50:35,2025,9,September,19,Friday,Paid,True,False,43.75,Merchant_4,Groceries,Completed,TXN0100
+2025-09-21 12:06:30,2025,9,September,21,Sunday,Received,False,True,10759.12,Merchant_2,Other,Completed,TXN0101
+2025-09-22 12:35:08,2025,9,September,22,Monday,Paid,True,False,339.7,Merchant_4,Groceries,Completed,TXN0102
+2025-09-22 12:43:21,2025,9,September,22,Monday,Paid,True,False,282.2,Merchant_12,Food Delivery,Completed,TXN0103
+2025-09-22 21:36:06,2025,9,September,22,Monday,Paid,True,False,1844.18,Merchant_36,Other,Completed,TXN0104
+2025-09-23 21:29:02,2025,9,September,23,Tuesday,Received,False,True,1972.71,Merchant_2,Other,Completed,TXN0105
+2025-09-24 11:58:44,2025,9,September,24,Wednesday,Paid,True,False,427.31,Merchant_12,Food Delivery,Completed,TXN0106
+2025-09-24 12:55:15,2025,9,September,24,Wednesday,Paid,True,False,317.87,Merchant_12,Food Delivery,Completed,TXN0107
+2025-09-24 18:48:20,2025,9,September,24,Wednesday,Paid,True,False,1418.4,Merchant_37,Other,Completed,TXN0108
+2025-09-24 18:49:04,2025,9,September,24,Wednesday,Paid,True,False,83.82,Merchant_38,Other,Completed,TXN0109
+2025-09-25 11:56:38,2025,9,September,25,Thursday,Paid,True,False,236.77,Merchant_39,Other,Completed,TXN0110
+2025-09-25 12:11:39,2025,9,September,25,Thursday,Paid,True,False,192.65,Merchant_40,Other,Completed,TXN0111
+2025-09-26 15:36:29,2025,9,September,26,Friday,Paid,True,False,319.11,Merchant_41,Other,Completed,TXN0112
+2025-09-26 15:36:44,2025,9,September,26,Friday,Received,False,True,432.25,Merchant_2,Other,Completed,TXN0113
+2025-09-27 12:46:53,2025,9,September,27,Saturday,Paid,True,False,153.09,Merchant_12,Food Delivery,Completed,TXN0114
+2025-09-27 21:42:45,2025,9,September,27,Saturday,Received,False,True,1524.04,Merchant_2,Other,Completed,TXN0115
+2025-09-27 21:44:17,2025,9,September,27,Saturday,Received,False,True,1572.27,Merchant_2,Other,Completed,TXN0116
+2025-09-28 11:45:53,2025,9,September,28,Sunday,Paid,True,False,311.75,Merchant_4,Groceries,Completed,TXN0117
+2025-09-28 20:50:50,2025,9,September,28,Sunday,Paid,True,False,150.58,Merchant_4,Groceries,Completed,TXN0118
+2025-09-29 12:07:56,2025,9,September,29,Monday,Paid,True,False,135.67,Merchant_42,Other,Completed,TXN0119
+2025-09-29 12:13:43,2025,9,September,29,Monday,Paid,True,False,144.7,Merchant_42,Other,Failed,TXN0120
+2025-09-29 12:14:07,2025,9,September,29,Monday,Paid,True,False,156.4,Merchant_42,Other,Completed,TXN0121
+2025-09-29 17:49:46,2025,9,September,29,Monday,Paid,True,False,285.95,Merchant_12,Food Delivery,Completed,TXN0122
+2025-09-30 11:02:38,2025,9,September,30,Tuesday,Paid,True,False,2977.43,Merchant_43,Other,Completed,TXN0123
+2025-09-30 13:35:21,2025,9,September,30,Tuesday,Paid,True,False,455.16,Merchant_12,Food Delivery,Completed,TXN0124
+2025-09-30 21:23:34,2025,9,September,30,Tuesday,Paid,True,False,103.4,Merchant_44,Other,Completed,TXN0125
+2025-10-01 09:34:26,2025,10,October,1,Wednesday,Paid,True,False,532.49,Merchant_45,Other,Completed,TXN0126
+2025-10-01 13:37:39,2025,10,October,1,Wednesday,Paid,True,False,232.29,Merchant_4,Groceries,Completed,TXN0127
+2025-10-01 19:59:46,2025,10,October,1,Wednesday,Paid,True,False,376.13,Merchant_41,Other,Completed,TXN0128
+2025-10-01 20:35:59,2025,10,October,1,Wednesday,Paid,True,False,21.93,Merchant_6,Other,Completed,TXN0129
+2025-10-02 10:07:56,2025,10,October,2,Thursday,Paid,True,False,1441.17,Merchant_46,Other,Completed,TXN0130
+2025-10-03 09:13:37,2025,10,October,3,Friday,Paid,True,False,380.76,Merchant_12,Food Delivery,Completed,TXN0131
+2025-10-05 08:27:22,2025,10,October,5,Sunday,Paid,True,False,74.01,Merchant_35,Other,Completed,TXN0132
+2025-10-05 10:25:00,2025,10,October,5,Sunday,Paid,True,False,495.33,Merchant_4,Groceries,Completed,TXN0133
+2025-10-07 15:23:35,2025,10,October,7,Tuesday,Paid,True,False,1406.65,Merchant_8,Other,Failed,TXN0134
+2025-10-07 20:21:14,2025,10,October,7,Tuesday,Paid,True,False,326.67,Merchant_46,Other,Completed,TXN0135
+2025-10-07 20:33:01,2025,10,October,7,Tuesday,Paid,True,False,855.81,Merchant_47,Other,Completed,TXN0136
+2025-10-07 20:50:23,2025,10,October,7,Tuesday,Paid,True,False,284.34,Merchant_4,Groceries,Completed,TXN0137
+2025-10-09 09:11:55,2025,10,October,9,Thursday,Paid,True,False,280.53,Merchant_4,Groceries,Completed,TXN0138
+2025-10-09 10:40:09,2025,10,October,9,Thursday,Paid,True,False,1504.05,Merchant_48,Other,Completed,TXN0139
+2025-10-09 11:22:37,2025,10,October,9,Thursday,Paid,True,False,269.36,Merchant_10,Other,Completed,TXN0140
+2025-10-09 12:06:53,2025,10,October,9,Thursday,Paid,True,False,38.12,Merchant_49,Other,Completed,TXN0141
+2025-10-10 13:31:30,2025,10,October,10,Friday,Received,False,True,4525.88,Merchant_2,Other,Completed,TXN0142
+2025-10-11 11:16:14,2025,10,October,11,Saturday,Paid,True,False,274.56,Merchant_10,Other,Completed,TXN0143
+2025-10-11 16:21:55,2025,10,October,11,Saturday,Paid,True,False,380.16,Merchant_12,Food Delivery,Completed,TXN0144
+2025-10-11 16:35:56,2025,10,October,11,Saturday,Paid,True,False,356.87,Merchant_12,Food Delivery,Completed,TXN0145
+2025-10-12 20:49:50,2025,10,October,12,Sunday,Paid,True,False,255.43,Merchant_50,Other,Completed,TXN0146
+2025-10-13 12:52:19,2025,10,October,13,Monday,Paid,True,False,2041.26,Merchant_18,Other,Completed,TXN0147
+2025-10-13 17:00:12,2025,10,October,13,Monday,Paid,True,False,213.9,Merchant_4,Groceries,Completed,TXN0148
+2025-10-15 13:42:39,2025,10,October,15,Wednesday,Paid,True,False,298.28,Merchant_35,Other,Completed,TXN0149
+2025-10-16 09:06:09,2025,10,October,16,Thursday,Paid,True,False,467.44,Merchant_39,Other,Completed,TXN0150
+2025-10-16 09:38:20,2025,10,October,16,Thursday,Paid,True,False,227.9,Merchant_10,Other,Completed,TXN0151
+2025-10-17 10:03:30,2025,10,October,17,Friday,Paid,True,False,65.76,Merchant_51,Other,Completed,TXN0152
+2025-10-18 08:59:05,2025,10,October,18,Saturday,Paid,True,False,231.63,Merchant_4,Groceries,Completed,TXN0153
+2025-10-18 20:04:58,2025,10,October,18,Saturday,Paid,True,False,223.39,Merchant_12,Food Delivery,Completed,TXN0154
+2025-10-19 12:40:08,2025,10,October,19,Sunday,Paid,True,False,357.06,Merchant_12,Food Delivery,Completed,TXN0155
+2025-10-19 12:44:34,2025,10,October,19,Sunday,Paid,True,False,224.66,Merchant_12,Food Delivery,Completed,TXN0156
+2025-10-20 08:01:29,2025,10,October,20,Monday,Paid,True,False,504.57,Merchant_52,Other,Completed,TXN0157
+2025-10-20 09:40:34,2025,10,October,20,Monday,Paid,True,False,503.66,Merchant_53,Other,Completed,TXN0158
+2025-10-20 12:12:37,2025,10,October,20,Monday,Paid,True,False,1239.92,Merchant_54,Other,Completed,TXN0159
+2025-10-20 12:20:50,2025,10,October,20,Monday,Paid,True,False,213.1,Merchant_54,Other,Completed,TXN0160
+2025-10-20 15:16:32,2025,10,October,20,Monday,Paid,True,False,290.96,Merchant_55,Other,Completed,TXN0161
+2025-10-21 11:12:41,2025,10,October,21,Tuesday,Paid,True,False,838.16,Merchant_56,Other,Completed,TXN0162
+2025-10-21 11:17:07,2025,10,October,21,Tuesday,Paid,True,False,217.58,Merchant_10,Other,Completed,TXN0163
+2025-10-21 13:08:45,2025,10,October,21,Tuesday,Paid,True,False,202.54,Merchant_12,Food Delivery,Completed,TXN0164
+2025-10-22 12:40:14,2025,10,October,22,Wednesday,Paid,True,False,173.91,Merchant_4,Groceries,Completed,TXN0165
+2025-10-22 12:45:55,2025,10,October,22,Wednesday,Paid,True,False,231.64,Merchant_57,Other,Failed,TXN0166
+2025-10-22 12:46:53,2025,10,October,22,Wednesday,Paid,True,False,195.22,Merchant_17,Other,Completed,TXN0167
+2025-10-22 12:48:47,2025,10,October,22,Wednesday,Paid,True,False,229.77,Merchant_17,Other,Completed,TXN0168
+2025-10-22 12:49:53,2025,10,October,22,Wednesday,Paid,True,False,213.83,Merchant_17,Other,Completed,TXN0169
+2025-10-22 14:01:59,2025,10,October,22,Wednesday,Received,False,True,4211.9,Merchant_2,Other,Completed,TXN0170
+2025-10-23 18:41:27,2025,10,October,23,Thursday,Paid,True,False,9.61,Merchant_29,Other,Completed,TXN0171
+2025-10-24 16:17:13,2025,10,October,24,Friday,Received,False,True,8908.6,Merchant_2,Other,Completed,TXN0172
+2025-10-24 16:24:09,2025,10,October,24,Friday,Paid,True,False,140.6,Merchant_58,Other,Completed,TXN0173
+2025-10-24 16:39:34,2025,10,October,24,Friday,Paid,True,False,864.37,Merchant_6,Other,Completed,TXN0174
+2025-10-24 18:22:17,2025,10,October,24,Friday,Paid,True,False,374.43,Merchant_12,Food Delivery,Completed,TXN0175
+2025-10-26 08:06:53,2025,10,October,26,Sunday,Paid,True,False,263.97,Merchant_4,Groceries,Completed,TXN0176
+2025-10-27 10:08:55,2025,10,October,27,Monday,Paid,True,False,58.79,Merchant_6,Other,Completed,TXN0177
+2025-10-27 10:25:39,2025,10,October,27,Monday,Paid,True,False,666.57,Merchant_59,Other,Completed,TXN0178
+2025-10-28 10:15:45,2025,10,October,28,Tuesday,Paid,True,False,254.73,Merchant_6,Other,Completed,TXN0179
+2025-10-28 10:35:58,2025,10,October,28,Tuesday,Paid,True,False,237.2,Merchant_41,Other,Completed,TXN0180
+2025-10-28 15:48:28,2025,10,October,28,Tuesday,Paid,True,False,294.59,Merchant_12,Food Delivery,Completed,TXN0181
+2025-10-29 09:10:25,2025,10,October,29,Wednesday,Paid,True,False,1801.33,Merchant_35,Other,Completed,TXN0182
+2025-10-30 11:19:30,2025,10,October,30,Thursday,Paid,True,False,280.37,Merchant_4,Groceries,Completed,TXN0183
+2025-10-30 17:53:26,2025,10,October,30,Thursday,Paid,True,False,72.56,Merchant_60,Other,Completed,TXN0184
+2025-11-01 15:30:44,2025,11,November,1,Saturday,Paid,True,False,4242.67,Merchant_61,Other,Completed,TXN0185
+2025-11-01 18:56:10,2025,11,November,1,Saturday,Paid,True,False,314.35,Merchant_12,Food Delivery,Completed,TXN0186
+2025-11-01 19:25:21,2025,11,November,1,Saturday,Paid,True,False,506.87,Merchant_10,Other,Completed,TXN0187
+2025-11-01 20:06:10,2025,11,November,1,Saturday,Paid,True,False,86.83,Merchant_12,Food Delivery,Completed,TXN0188
+2025-11-02 12:45:10,2025,11,November,2,Sunday,Paid,True,False,328.72,Merchant_12,Food Delivery,Completed,TXN0189
+2025-11-06 18:34:22,2025,11,November,6,Thursday,Paid,True,False,299.14,Merchant_62,Other,Completed,TXN0190
+2025-11-06 18:39:03,2025,11,November,6,Thursday,Paid,True,False,34.13,Merchant_62,Other,Completed,TXN0191
+2025-11-06 20:16:39,2025,11,November,6,Thursday,Paid,True,False,509.05,Merchant_63,Other,Completed,TXN0192
+2025-11-06 21:14:06,2025,11,November,6,Thursday,Paid,True,False,42.89,Merchant_64,Other,Completed,TXN0193
+2025-11-07 15:34:28,2025,11,November,7,Friday,Paid,True,False,18.8,Merchant_65,Other,Completed,TXN0194
+2025-11-07 15:39:50,2025,11,November,7,Friday,Paid,True,False,180.57,Merchant_39,Other,Completed,TXN0195
+2025-11-08 15:06:22,2025,11,November,8,Saturday,Paid,True,False,104.76,Merchant_65,Other,Completed,TXN0196
+2025-11-09 09:41:18,2025,11,November,9,Sunday,Paid,True,False,175.48,Merchant_66,Other,Completed,TXN0197
+2025-11-09 19:42:30,2025,11,November,9,Sunday,Paid,True,False,235.89,Merchant_4,Groceries,Completed,TXN0198
+2025-11-11 20:59:16,2025,11,November,11,Tuesday,Paid,True,False,414.81,Merchant_67,Other,Completed,TXN0199
+2025-11-12 13:32:46,2025,11,November,12,Wednesday,Paid,True,False,216.86,Merchant_4,Groceries,Completed,TXN0200
+2025-11-12 18:37:02,2025,11,November,12,Wednesday,Paid,True,False,237.35,Merchant_12,Food Delivery,Completed,TXN0201
+2025-11-13 08:09:16,2025,11,November,13,Thursday,Paid,True,False,329.35,Merchant_35,Other,Completed,TXN0202
+2025-11-13 10:15:54,2025,11,November,13,Thursday,Paid,True,False,291.41,Merchant_12,Food Delivery,Completed,TXN0203
+2025-11-13 17:46:17,2025,11,November,13,Thursday,Paid,True,False,492.05,Merchant_66,Other,Completed,TXN0204
+2025-11-13 17:47:26,2025,11,November,13,Thursday,Paid,True,False,30.63,Merchant_66,Other,Completed,TXN0205
+2025-11-13 18:36:45,2025,11,November,13,Thursday,Paid,True,False,53.05,Merchant_68,Other,Completed,TXN0206
+2025-11-13 18:38:38,2025,11,November,13,Thursday,Paid,True,False,47.43,Merchant_69,Other,Completed,TXN0207
+2025-11-13 18:44:42,2025,11,November,13,Thursday,Paid,True,False,288.2,Merchant_70,Other,Completed,TXN0208
+2025-11-13 18:49:51,2025,11,November,13,Thursday,Paid,True,False,212.03,Merchant_71,Other,Completed,TXN0209
+2025-11-13 18:53:59,2025,11,November,13,Thursday,Paid,True,False,213.28,Merchant_72,Other,Completed,TXN0210
+2025-11-14 10:14:56,2025,11,November,14,Friday,Paid,True,False,182.13,Merchant_12,Food Delivery,Completed,TXN0211
+2025-11-16 08:23:34,2025,11,November,16,Sunday,Paid,True,False,0.95,Merchant_10,Other,Completed,TXN0212
+2025-11-16 09:32:04,2025,11,November,16,Sunday,Paid,True,False,542.76,Merchant_10,Other,Completed,TXN0213
+2025-11-17 17:17:25,2025,11,November,17,Monday,Paid,True,False,52.06,Merchant_6,Other,Completed,TXN0214
+2025-11-18 08:32:48,2025,11,November,18,Tuesday,Paid,True,False,420.91,Merchant_4,Groceries,Completed,TXN0215
+2025-11-18 13:11:55,2025,11,November,18,Tuesday,Paid,True,False,140.76,Merchant_10,Other,Completed,TXN0216
+2025-11-20 10:34:11,2025,11,November,20,Thursday,Paid,True,False,457.74,Merchant_39,Other,Completed,TXN0217
+2025-11-20 18:13:33,2025,11,November,20,Thursday,Paid,True,False,328.24,Merchant_12,Food Delivery,Completed,TXN0218
+2025-11-21 13:35:54,2025,11,November,21,Friday,Paid,True,False,2315.78,Merchant_73,Other,Completed,TXN0219
+2025-11-21 13:36:03,2025,11,November,21,Friday,Paid,True,False,2247.0,Merchant_57,Other,Completed,TXN0220
+2025-11-21 17:07:11,2025,11,November,21,Friday,Paid,True,False,290.37,Merchant_4,Groceries,Completed,TXN0221
+2025-11-22 17:47:57,2025,11,November,22,Saturday,Received,False,True,10814.73,Merchant_2,Other,Completed,TXN0222
+2025-11-23 11:02:57,2025,11,November,23,Sunday,Paid,True,False,451.08,Merchant_39,Other,Completed,TXN0223
+2025-11-24 10:59:46,2025,11,November,24,Monday,Received,False,True,10416.78,Merchant_2,Other,Completed,TXN0224
+2025-11-24 10:59:47,2025,11,November,24,Monday,Paid,True,False,3794.91,Merchant_74,Other,Completed,TXN0225
+2025-11-24 11:12:13,2025,11,November,24,Monday,Paid,True,False,439.49,Merchant_12,Food Delivery,Completed,TXN0226
+2025-11-24 13:59:14,2025,11,November,24,Monday,Received,False,True,488.62,Merchant_2,Other,Completed,TXN0227
+2025-11-25 07:14:20,2025,11,November,25,Tuesday,Paid,True,False,380.58,Merchant_4,Groceries,Completed,TXN0228
+2025-11-25 07:35:29,2025,11,November,25,Tuesday,Paid,True,False,141.83,Merchant_4,Groceries,Completed,TXN0229
+2025-11-25 15:07:18,2025,11,November,25,Tuesday,Paid,True,False,217.78,Merchant_12,Food Delivery,Completed,TXN0230
+2025-11-25 19:58:58,2025,11,November,25,Tuesday,Paid,True,False,248.87,Merchant_12,Food Delivery,Completed,TXN0231
+2025-11-26 17:52:18,2025,11,November,26,Wednesday,Received,False,True,1502.65,Merchant_2,Other,Failed,TXN0232
+2025-11-26 17:53:23,2025,11,November,26,Wednesday,Received,False,True,1399.49,Merchant_2,Other,Completed,TXN0233
+2025-11-27 08:29:22,2025,11,November,27,Thursday,Paid,True,False,225.58,Merchant_4,Groceries,Completed,TXN0234
+2025-11-27 13:34:18,2025,11,November,27,Thursday,Paid,True,False,224.31,Merchant_12,Food Delivery,Completed,TXN0235
+2025-11-27 20:25:34,2025,11,November,27,Thursday,Paid,True,False,567.26,Merchant_12,Food Delivery,Completed,TXN0236
+2025-11-28 16:54:51,2025,11,November,28,Friday,Paid,True,False,33196.0,Merchant_75,Other,Completed,TXN0237
+2025-11-29 10:06:06,2025,11,November,29,Saturday,Paid,True,False,498.02,Merchant_56,Other,Completed,TXN0238
+2025-11-29 19:51:57,2025,11,November,29,Saturday,Paid,True,False,799.76,Merchant_76,Other,Completed,TXN0239
+2025-11-29 21:22:44,2025,11,November,29,Saturday,Paid,True,False,203.81,Merchant_12,Food Delivery,Completed,TXN0240
+2025-11-30 19:29:36,2025,11,November,30,Sunday,Paid,True,False,2152.17,Merchant_77,Other,Completed,TXN0241
+2025-11-30 20:12:22,2025,11,November,30,Sunday,Paid,True,False,773.13,Merchant_12,Food Delivery,Completed,TXN0242
+2025-11-30 20:51:01,2025,11,November,30,Sunday,Paid,True,False,152.89,Merchant_9,Other,Completed,TXN0243
+2025-12-01 09:26:54,2025,12,December,1,Monday,Paid,True,False,112.7,Merchant_78,Other,Completed,TXN0244
+2025-12-01 09:34:58,2025,12,December,1,Monday,Paid,True,False,660.11,Merchant_6,Other,Completed,TXN0245
+2025-12-02 21:18:07,2025,12,December,2,Tuesday,Paid,True,False,237.94,Merchant_10,Other,Completed,TXN0246
+2025-12-03 08:40:07,2025,12,December,3,Wednesday,Paid,True,False,23.51,Merchant_79,Other,Completed,TXN0247
+2025-12-03 08:40:51,2025,12,December,3,Wednesday,Paid,True,False,21.18,Merchant_79,Other,Completed,TXN0248
+2025-12-03 08:44:23,2025,12,December,3,Wednesday,Paid,True,False,323.46,Merchant_41,Other,Completed,TXN0249
+2025-12-03 11:51:56,2025,12,December,3,Wednesday,Paid,True,False,299.03,Merchant_12,Food Delivery,Completed,TXN0250
+2025-12-03 18:28:47,2025,12,December,3,Wednesday,Paid,True,False,108.52,Merchant_66,Other,Completed,TXN0251
+2025-12-05 18:12:58,2025,12,December,5,Friday,Paid,True,False,193.21,Merchant_66,Other,Completed,TXN0252
+2025-12-06 10:08:53,2025,12,December,6,Saturday,Paid,True,False,43.77,Merchant_32,Other,Completed,TXN0253
+2025-12-06 10:16:11,2025,12,December,6,Saturday,Paid,True,False,184.87,Merchant_80,Other,Completed,TXN0254
+2025-12-07 09:34:38,2025,12,December,7,Sunday,Paid,True,False,330.93,Merchant_56,Other,Completed,TXN0255
+2025-12-12 09:35:57,2025,12,December,12,Friday,Paid,True,False,298.73,Merchant_35,Other,Completed,TXN0256
+2025-12-12 09:49:50,2025,12,December,12,Friday,Paid,True,False,234.09,Merchant_10,Other,Completed,TXN0257
+2025-12-13 08:59:16,2025,12,December,13,Saturday,Paid,True,False,81.04,Merchant_81,Other,Completed,TXN0258
+2025-12-13 10:33:26,2025,12,December,13,Saturday,Paid,True,False,504.43,Merchant_82,Other,Completed,TXN0259
+2025-12-13 10:35:23,2025,12,December,13,Saturday,Paid,True,False,96.81,Merchant_46,Other,Completed,TXN0260
+2025-12-13 19:18:34,2025,12,December,13,Saturday,Paid,True,False,634.93,Merchant_83,Other,Completed,TXN0261
+2025-12-14 08:32:56,2025,12,December,14,Sunday,Paid,True,False,282.47,Merchant_41,Other,Completed,TXN0262
+2025-12-14 14:16:35,2025,12,December,14,Sunday,Paid,True,False,644.47,Merchant_84,Other,Completed,TXN0263
+2025-12-14 15:54:34,2025,12,December,14,Sunday,Paid,True,False,63.66,Merchant_85,Other,Completed,TXN0264
+2025-12-14 16:04:44,2025,12,December,14,Sunday,Paid,True,False,204.4,Merchant_86,Wellness,Completed,TXN0265
+2025-12-14 16:08:22,2025,12,December,14,Sunday,Received,False,True,2122.87,Merchant_2,Other,Completed,TXN0266
+2025-12-14 16:52:12,2025,12,December,14,Sunday,Paid,True,False,2543.52,Merchant_87,Other,Completed,TXN0267
+2025-12-15 14:00:05,2025,12,December,15,Monday,Paid,True,False,438.87,Merchant_12,Food Delivery,Completed,TXN0268
+2025-12-15 18:47:45,2025,12,December,15,Monday,Paid,True,False,406.31,Merchant_7,Other,Completed,TXN0269
+2025-12-15 21:28:36,2025,12,December,15,Monday,Paid,True,False,1636.8,Merchant_13,Other,Completed,TXN0270
