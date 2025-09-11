@@ -17,7 +17,8 @@ from fpdf import FPDF
 # ------------------------------
 HF_TOKEN = st.secrets["huggingface"]["token"]
 
-st.set_page_config(page_title="Smart Spending Coach", page_icon="💰", layout="wide")
+st.set_page_config(page_title="SpendSense: AI‑Powered Financial Coach", page_icon="💰", layout="wide")
+
 
 # ------------------------------
 # THEME & BACKGROUND
@@ -149,12 +150,19 @@ def generate_advice_pdf(text: str) -> bytes:
     pdf = FPDF(orientation="P", unit="mm", format="A4")
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
+
+    # Title
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(0, 10, "SpendSense: AI‑Powered Financial Coach", ln=True, align="C")
+    pdf.ln(5)
+
+    # Body
     pdf.set_font("Arial", size=12)
     for line in text.split("\n"):
         for chunk in [line[i:i+90] for i in range(0, len(line), 90)]:
             pdf.cell(0, 6, chunk, ln=True)
-    return pdf.output(dest="S").encode("latin-1")
 
+    return pdf.output(dest="S").encode("latin-1")
 # ------------------------------
 # STREAMING GENERATION
 # ------------------------------
@@ -214,26 +222,40 @@ if uploaded_pdf is not None:
 # ------------------------------
 # MODEL UI
 # ------------------------------
-st.title("💰 Smart Spending Coach")
+st.title("💰 SpendSense: AI‑Powered Financial Coach")
+
+# Auto-select default model based on GPU availability
+if torch.cuda.is_available():
+    default_model = "mistralai/Mistral-7B-Instruct-v0.1"
+else:
+    default_model = "tiiuae/falcon-7b-instruct"
 
 model_choice = st.selectbox(
     "Select model",
-    ["mistralai/Mistral-7B-Instruct-v0.1", "google/flan-t5-large"],
-    index=0,
+    [
+        "tiiuae/falcon-7b-instruct",   # Best quality on CPU
+        "microsoft/phi-2",             # Fastest
+        "google/gemma-2b-it",          # Balanced
+        "google/flan-t5-large",        # Fallback
+        "mistralai/Mistral-7B-Instruct-v0.1"  # Only practical on GPU
+    ],
+    index=[ 
+        0 if not torch.cuda.is_available() else 4  # Falcon on CPU, Mistral on GPU
+    ][0]
 )
 st.session_state.model_choice = model_choice
 
 load_clicked = st.button("Load model")
 if load_clicked:
     with st.spinner(f"Loading '{model_choice}'..."):
-        if "Mistral" in model_choice:
+        if "mistral" in model_choice.lower() or "falcon" in model_choice.lower():
             tok, mdl = load_causal_model(model_choice)
         else:
             tok, mdl = load_seq2seq_model(model_choice)
         st.session_state.tokenizer = tok
         st.session_state.model = mdl
     st.success(f"Model '{model_choice}' loaded ✅")
-
+    
 user_input = st.text_area("Enter your question or request for advice:")
 
 # ------------------------------
@@ -324,4 +346,5 @@ if gen_clicked:
             file_name="smart_spending_advice.pdf",
             mime="application/pdf",
         )
+
 
