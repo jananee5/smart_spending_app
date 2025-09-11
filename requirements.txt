@@ -1,0 +1,10 @@
+streamlit
+transformers
+accelerate
+torch
+fpdf
+pandas
+pdfplumber
+langchain
+langchain-core
+langchain-huggingface
