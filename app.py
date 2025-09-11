@@ -24,6 +24,10 @@ st.set_page_config(page_title="Smart Spending Coach", page_icon="💰", layout="
 # ------------------------------
 page_bg_css = """
 <style>
+/* Import a modern Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
+/* Full-app background with dark overlay */
 [data-testid="stAppViewContainer"] {
   background-image:
     linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)),
@@ -31,24 +35,69 @@ page_bg_css = """
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  font-family: 'Poppins', sans-serif;
+  animation: fadeIn 0.8s ease-in-out;
 }
+
+/* Transparent top bar */
 [data-testid="stHeader"] { background: rgba(0,0,0,0); }
+
+/* Main content container with glass effect */
 .block-container {
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(2px);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(6px);
   border-radius: 14px;
-  padding: 1.25rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  animation: slideUp 0.6s ease-out;
 }
+
+/* Headings */
 .block-container h1 {
-  color: #111111;
-  letter-spacing: 0.2px;
+  color: #111;
+  letter-spacing: 0.5px;
   margin-bottom: 0.5rem;
+  font-weight: 600;
 }
 .block-container h2, .block-container h3 {
-  color: #222222;
+  color: #222;
+  font-weight: 600;
+}
+
+/* Buttons */
+div.stButton > button {
+  background-color: #ff9800;
+  color: white;
+  border-radius: 8px;
+  font-weight: bold;
+  padding: 0.5rem 1rem;
+  border: none;
+  transition: background-color 0.3s ease;
+}
+div.stButton > button:hover {
+  background-color: #e68900;
+}
+
+/* File uploader styling */
+[data-testid="stFileUploader"] {
+  background: rgba(255,255,255,0.9);
+  border-radius: 10px;
+  padding: 1rem;
+  border: 2px dashed #ff9800;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideUp {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 </style>
 """
+
 st.markdown(page_bg_css, unsafe_allow_html=True)
 
 # ------------------------------
@@ -275,3 +324,4 @@ if gen_clicked:
             file_name="smart_spending_advice.pdf",
             mime="application/pdf",
         )
+
