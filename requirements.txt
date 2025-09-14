@@ -1,10 +1,11 @@
 streamlit
-transformers
-accelerate
-torch
-fpdf
-pandas
 pdfplumber
+pandas
+fpdf
+transformers
+torch
+accelerate
 langchain
 langchain-core
 langchain-huggingface
+
