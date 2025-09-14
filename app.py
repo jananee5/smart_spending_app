@@ -6,13 +6,30 @@ from fpdf import FPDF
 import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
-st.set_page_config(page_title="SpendWise: AI Financial Coach", layout="wide")
+st.set_page_config(page_title="SpendWise: Smart Financial Advisor", layout="wide")
 
-st.title("💰 SpendWise: AI‑Powered Financial Coach")
+# -------------------- Background Styling --------------------
+st.markdown(
+    """
+    <style>
+    .main {
+        background-image: url("https://lh4.googleusercontent.com/Dk2wNOeHKOwqX8JRZKrQMjmRwa7y9fIM9pUoJ8WQgM5Ugz2y6p8OyYBPaASy0lca9N3ips0WlCmWNQ5dSE-GBrWXz8c-FbMw4Rl2lO-ngFvX2TqE58Wzfr5wzKyvITCPHHhr8cRX");
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        background-position: center;
+    }
+    div.stButton > button {
+        color: white;
+        background-color: #ff4b4b;
+        border-radius: 10px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-# ----------------------
-# PDF Upload and Parsing
-# ----------------------
+# -------------------- PDF Upload and Parsing --------------------
 def parse_pdf(uploaded_file):
     with pdfplumber.open(uploaded_file) as pdf:
         text = "\n".join([page.extract_text() or "" for page in pdf.pages])
@@ -31,88 +48,131 @@ def extract_transactions(text):
             "Type": ttype,
             "Amount": float(amount.replace(",", "")),
             "Party": party or "Self",
-            "Category": "Other"
         })
-    return pd.DataFrame(transactions)
+    df = pd.DataFrame(transactions)
+    return categorize_transactions(df)
 
-# ----------------------
-# AI Advice Generator
-# ----------------------
+# -------------------- Categorization --------------------
+def categorize_transactions(df):
+    categories = {
+        "Amazon": "Shopping",
+        "Flipkart": "Shopping",
+        "Swiggy": "Food",
+        "Zomato": "Food",
+        "Apollo": "Medical",
+        "Pharmacy": "Medical",
+        "Hospital": "Medical",
+        "Uber": "Transport",
+        "Ola": "Transport",
+        "Fuel": "Transport",
+        "Grocery": "Groceries",
+        "Dmart": "Groceries",
+        "Reliance": "Groceries",
+        "Rent": "Rent",
+        "Insurance": "Insurance"
+    }
+
+    def map_category(party):
+        for key, val in categories.items():
+            if key.lower() in party.lower():
+                return val
+        return "Other"
+
+    df["Category"] = df["Party"].apply(map_category)
+    df["Month"] = df["Date"].dt.to_period("M")
+    return df
+
+# -------------------- Load Model --------------------
 @st.cache_resource
 def load_model():
     tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-small")
     model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-small")
     return tokenizer, model
 
-def generate_advice(df, user_question, tokenizer, model):
-    total_income = df[df.Type == "Received"].Amount.sum()
-    total_expense = df[df.Type == "Paid"].Amount.sum()
-    top_expenses = (
+# -------------------- Generate Advice --------------------
+def generate_advice(df, question, tokenizer, model):
+    income = df[df.Type == "Received"].Amount.sum()
+    expense = df[df.Type == "Paid"].Amount.sum()
+    net = income - expense
+
+    monthly_summary = (
+        df.groupby(["Month", "Type"])
+        .Amount.sum()
+        .unstack(fill_value=0)
+        .reset_index()
+    )
+
+    category_summary = (
         df[df.Type == "Paid"]
-        .groupby("Party")
+        .groupby("Category")
         .Amount.sum()
         .sort_values(ascending=False)
-        .head(3)
-        .to_dict()
+        .head(5)
     )
 
     prompt = f"""
-    You are a financial advisor. Analyze this user's spending and income from a bank statement.
+    Analyze the user's financial behavior based on the data below.
 
-    Total Income: ₹{total_income:.2f}
-    Total Expenses: ₹{total_expense:.2f}
-    Top Expenses:
-    {"; ".join([f"{k}: ₹{v:.2f}" for k, v in top_expenses.items()])}
+    Total Income: ₹{income:.2f}
+    Total Expenses: ₹{expense:.2f}
+    Net Balance: ₹{net:.2f}
 
-    Question: {user_question}
+    Monthly Breakdown:
+    {monthly_summary.to_string(index=False)}
 
-    Provide 3 personalized pieces of financial advice.
+    Top Spending Categories:
+    {category_summary.to_string()}
+
+    Question: {question}
+
+    Provide three actionable, personalized financial insights.
     """
 
-    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
-    outputs = model.generate(**inputs, max_new_tokens=256)
-    advice = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    return advice
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True)
+    outputs = model.generate(**inputs, max_new_tokens=512)
+    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    return response
 
-# ----------------------
-# PDF Report Generator
-# ----------------------
-def create_pdf_report(advice_text):
+# -------------------- PDF Export --------------------
+def create_pdf_report(text):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 10, "SpendWise Financial Advice\n\n" + advice_text)
-    return pdf.output(dest='S').encode("latin-1")
+    for line in text.split('\n'):
+        pdf.multi_cell(0, 10, line)
+    return pdf.output(dest="S").encode("latin-1")
 
-# ----------------------
-# Streamlit UI
-# ----------------------
-uploaded_pdf = st.file_uploader("📄 Upload your bank statement (PDF)", type="pdf")
+# -------------------- UI Layout --------------------
+st.title("📊 SpendWise — AI-Powered Financial Coach")
 
-if uploaded_pdf:
-    st.success("PDF uploaded successfully!")
-    raw_text = parse_pdf(uploaded_pdf)
-    df = extract_transactions(raw_text)
+uploaded = st.file_uploader("📄 Upload your bank statement (PDF)", type="pdf")
 
-    if not df.empty:
-        st.subheader("📊 Transactions Preview")
-        st.dataframe(df.head(10))
+if uploaded:
+    text = parse_pdf(uploaded)
+    df = extract_transactions(text)
 
-        question = st.text_area("🧠 Ask your financial question:", "How can I reduce unnecessary spending?")
+    if df.empty:
+        st.error("No valid transactions found.")
+    else:
+        st.success(f"✅ Parsed {len(df)} transactions.")
+        st.dataframe(df.head())
 
-        if st.button("💡 Get AI Advice"):
-            with st.spinner("Generating advice..."):
+        with st.expander("📈 Monthly Summary"):
+            monthly = df.groupby(["Month", "Type"]).Amount.sum().unstack(fill_value=0)
+            st.bar_chart(monthly)
+
+        with st.expander("📂 Spending by Category"):
+            categories = df[df.Type == "Paid"].groupby("Category").Amount.sum()
+            st.bar_chart(categories)
+
+        question = st.text_area("🧠 Ask a financial question:", "Where can I cut spending or save more?")
+
+        if st.button("💡 Generate AI Advice"):
+            with st.spinner("Analyzing your finances..."):
                 tokenizer, model = load_model()
                 advice = generate_advice(df, question, tokenizer, model)
-                st.subheader("📋 AI-Powered Financial Advice")
-                st.markdown(advice)
+                st.markdown("### 📋 Financial Advice")
+                st.write(advice)
 
-                pdf_bytes = create_pdf_report(advice)
-                st.download_button(
-                    label="📥 Download Advice as PDF",
-                    data=pdf_bytes,
-                    file_name="financial_advice.pdf",
-                    mime="application/pdf"
-                )
-    else:
-        st.error("❌ No valid transactions found in your PDF.")
+                pdf = create_pdf_report(advice)
+                st.download_button("📥 Download as PDF", data=pdf, file_name="financial_advice.pdf")
