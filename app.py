@@ -37,11 +37,20 @@ def parse_pdf(uploaded_file):
 
 def extract_transactions(text):
     pattern = re.compile(
-        r"(Received|Paid)\s₹([\d,]+\.\d{2})\s(?:to\s(.*?))?\s*\n.*?(\w{3}\s\d{1,2},\s\d{4})",
+        r"(Received|Paid|Credited|Debited|Deposit|Withdrawal)\s₹([\d,]+\.\d{2})\s(?:to\s(.*?))?\s*\n.*?(\w{3}\s\d{1,2},\s\d{4})",
         re.DOTALL
     )
     matches = pattern.findall(text)
     transactions = []
+
+    def normalize_type(ttype):
+        ttype = ttype.lower()
+        if ttype in ["received", "credited", "deposit"]:
+            return "Received"
+        elif ttype in ["paid", "debited", "withdrawal"]:
+            return "Paid"
+        else:
+            return ttype.capitalize()
 
     for ttype, amount, party, date in matches:
         try:
@@ -51,18 +60,14 @@ def extract_transactions(text):
 
         transactions.append({
             "Date": parsed_date,
-            "Type": ttype,
+            "Type": normalize_type(ttype),
             "Amount": float(amount.replace(",", "")),
             "Party": party or "Self",
         })
 
     df = pd.DataFrame(transactions)
-
-    # Drop rows with invalid dates (NaT)
     df = df.dropna(subset=["Date"])
-
     return categorize_transactions(df)
-
 
 # -------------------- Categorization with Deep Subcategories --------------------
 def categorize_transactions(df):
@@ -215,3 +220,4 @@ if uploaded:
 
                 pdf = create_pdf_report(advice)
                 st.download_button("📥 Download as PDF", data=pdf, file_name="financial_advice.pdf")
+
