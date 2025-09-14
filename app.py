@@ -13,7 +13,7 @@ st.markdown(
     """
     <style>
     .main {
-        background-image: url("https://lh4.googleusercontent.com/Dk2wNOeHKOwqX8JRZKrQMjmRwa7y9fIM9pUoJ8WQgM5Ugz2y6p8OyYBPaASy0lca9N3ips0WlCmWNQ5dSE-GBrWXz8c-FbMw4Rl2lO-ngFvX2TqE58Wzfr5wzKyvITCPHHhr8cRX");
+        background-image: url("https://images.unsplash.com/photo-1556745757-8d76bdb6984b");
         background-size: cover;
         background-repeat: no-repeat;
         background-attachment: fixed;
@@ -42,15 +42,27 @@ def extract_transactions(text):
     )
     matches = pattern.findall(text)
     transactions = []
+
     for ttype, amount, party, date in matches:
+        try:
+            parsed_date = pd.to_datetime(date, format="%b %d, %Y")
+        except:
+            parsed_date = pd.to_datetime(date, errors="coerce")
+
         transactions.append({
-            "Date": pd.to_datetime(date),
+            "Date": parsed_date,
             "Type": ttype,
             "Amount": float(amount.replace(",", "")),
             "Party": party or "Self",
         })
+
     df = pd.DataFrame(transactions)
+
+    # Drop rows with invalid dates (NaT)
+    df = df.dropna(subset=["Date"])
+
     return categorize_transactions(df)
+
 
 # -------------------- Categorization --------------------
 def categorize_transactions(df):
@@ -176,4 +188,5 @@ if uploaded:
 
                 pdf = create_pdf_report(advice)
                 st.download_button("📥 Download as PDF", data=pdf, file_name="financial_advice.pdf")
+
 
