@@ -64,8 +64,9 @@ def extract_transactions(text):
     return categorize_transactions(df)
 
 
-# -------------------- Categorization --------------------
+# -------------------- Categorization with Deep Subcategories --------------------
 def categorize_transactions(df):
+    # Broad categories first
     categories = {
         "Amazon": "Shopping",
         "Flipkart": "Shopping",
@@ -84,14 +85,40 @@ def categorize_transactions(df):
         "Insurance": "Insurance"
     }
 
+    # Your detailed deep sub-category mapping for 'Other'
+    detailed_mapping = {
+        "Good To Go Foodworks Private Limited": "Food Delivery",
+        "Thiruvalluvar Salai Mugappair East": "Shopping",
+        "Pvr Inox Limited": "Entertainment: Movies",
+        "Zepto Marketplace Private Limited": "Groceries",
+        "M/S.Ligo Pharmacy": "Healthcare: Pharmacy",
+        "Swiggy Limited": "Food Delivery",
+        "Aladiyan Karupatti Shop": "Groceries",
+        "Medplus Padi Kumaran Nagar": "Healthcare: Pharmacy",
+        "Punitha Rani R": "Personal Transfer",
+        "M/S.Saravana Egg Mart": "Groceries",
+        "Rollbaby Roll Vr Mall": "Food & Dining",
+        "Phonepe": "Telecom & Recharge",
+        "M Jayabharathi": "Personal Transfer",
+        # Add more mappings here if needed
+    }
+
     def map_category(party):
+        # First try broad categories
         for key, val in categories.items():
             if key.lower() in party.lower():
                 return val
+
+        # If no match, try detailed mapping for better subcategories
+        for key, val in detailed_mapping.items():
+            if key.lower() in party.lower():
+                return val
+
+        # Default fallback
         return "Other"
 
     df["Category"] = df["Party"].apply(map_category)
-    df["Month"] = df["Date"].dt.to_period("M")
+    df["Month"] = df["Date"].dt.strftime("%Y-%m")
     return df
 
 # -------------------- Load Model --------------------
@@ -119,26 +146,26 @@ def generate_advice(df, question, tokenizer, model):
         .groupby("Category")
         .Amount.sum()
         .sort_values(ascending=False)
-        .head(5)
+        .head(10)  # show top 10 categories for better detail
     )
 
     prompt = f"""
-    Analyze the user's financial behavior based on the data below.
+Analyze the user's financial behavior based on the data below.
 
-    Total Income: ₹{income:.2f}
-    Total Expenses: ₹{expense:.2f}
-    Net Balance: ₹{net:.2f}
+Total Income: ₹{income:.2f}
+Total Expenses: ₹{expense:.2f}
+Net Balance: ₹{net:.2f}
 
-    Monthly Breakdown:
-    {monthly_summary.to_string(index=False)}
+Monthly Breakdown:
+{monthly_summary.to_string(index=False)}
 
-    Top Spending Categories:
-    {category_summary.to_string()}
+Top Spending Categories:
+{category_summary.to_string()}
 
-    Question: {question}
+Question: {question}
 
-    Provide three actionable, personalized financial insights.
-    """
+Provide three actionable, personalized financial insights.
+"""
 
     inputs = tokenizer(prompt, return_tensors="pt", truncation=True)
     outputs = model.generate(**inputs, max_new_tokens=512)
@@ -174,7 +201,7 @@ if uploaded:
             st.bar_chart(monthly)
 
         with st.expander("📂 Spending by Category"):
-            categories = df[df.Type == "Paid"].groupby("Category").Amount.sum()
+            categories = df[df.Type == "Paid"].groupby("Category").Amount.sum().sort_values(ascending=False)
             st.bar_chart(categories)
 
         question = st.text_area("🧠 Ask a financial question:", "Where can I cut spending or save more?")
@@ -188,5 +215,3 @@ if uploaded:
 
                 pdf = create_pdf_report(advice)
                 st.download_button("📥 Download as PDF", data=pdf, file_name="financial_advice.pdf")
-
-
