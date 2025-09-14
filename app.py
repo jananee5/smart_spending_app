@@ -176,3 +176,4 @@ if uploaded:
 
                 pdf = create_pdf_report(advice)
                 st.download_button("📥 Download as PDF", data=pdf, file_name="financial_advice.pdf")
+
