@@ -9,8 +9,7 @@ import numpy as np
 import streamlit as st
 from fpdf import FPDF
 
-from huggingface_hub import InferenceClient
-import requests
+from huggingface_hub import InferenceClient 
 from concurrent.futures import ThreadPoolExecutor
 
 # -------------------- Config / ENV --------------------
@@ -51,6 +50,7 @@ def set_background(url: str):
         """,
         unsafe_allow_html=True
     )
+set_background("https://static.vecteezy.com/system/resources/previews/019/154/472/large_2x/inflation-illustration-set-characters-buying-food-in-supermarket-and-worries-about-groceries-rising-price-vector.jpg")
 
 st.title("📊 SpendWise — Smart UPI Analyzer")
 
@@ -72,9 +72,10 @@ def parse_pdf_bytes(file_bytes: bytes) -> str:
 
 # -------------------- UTIL: Transaction Extraction --------------------
 DEFAULT_REGEX = re.compile(
-    r"(Received|Paid|Credited|Debited|Deposit|Withdrawal)\s*[₹]?\s*([\d,]+\.\d{2})\s*(?:to\s(.*?))?\s*\n?.*?([A-Za-z]{3}\s+\d{1,2},\s+\d{4})",
+    r"(Received|Paid|Credited|Debited|Deposit|Withdrawal)\s*[₹]?\s*([\d,]+\.\d{2}).*?(?:to|from)?\s*([A-Za-z0-9&\-\s\.]+)?\s*\n?.*?([A-Za-z]{3}\s+\d{1,2},\s+\d{4})",
     re.DOTALL
 )
+
 
 def extract_transactions(text: str, regex: Optional[re.Pattern] = None) -> pd.DataFrame:
     regex = regex or DEFAULT_REGEX
@@ -207,16 +208,19 @@ def categorize_df(df: pd.DataFrame) -> pd.DataFrame:
 
 # -------------------- REMOTE INFERENCE --------------------
 client = InferenceClient(token=HF_API_KEY)
-
 def hf_remote_infer(model_id: str, prompt: str, max_tokens: int = 512) -> str:
     if not HF_API_KEY:
         raise RuntimeError("HF_API_KEY not set for remote inference.")
-    response = client.text_generation(
-        model=model_id,
-        prompt=prompt,
-        max_new_tokens=max_tokens
-    )
-    return response
+    try:
+        response = client.text_generation(
+            model=model_id,
+            prompt=prompt,
+            max_new_tokens=max_tokens
+        )
+        return response
+    except Exception as e:
+        return f"Error during inference: {e}"
+
 
 # -------------------- PIPELINE --------------------
 def build_prompts(df: pd.DataFrame, question: str) -> Dict[str, str]:
@@ -317,6 +321,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
