@@ -12,10 +12,4 @@ matplotlib==3.9.2
 
 # Hugging Face + Transformers
 transformers==4.44.0
-#torch==2.2.2
 requests==2.32.3
-
-# Langflow integration
-langflow==1.0.18
-
-
