@@ -10,6 +10,7 @@ fpdf==1.7.2
 # Charts
 matplotlib==3.9.2
 
-# Hugging Face + Transformers
-transformers==4.44.0
+# Hugging Face API client
+huggingface-hub==0.24.6
 requests==2.32.3
+
