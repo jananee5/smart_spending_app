@@ -3,10 +3,15 @@ streamlit==1.38.0
 pandas==2.2.2
 numpy==2.1.1
 
-# PDF handling
-pdfplumber==0.11.0
+# PDF handling (pure-Python)
+pypdf
+
+# PDF -> report generation
 fpdf==1.7.2
 
-# Hugging Face lightweight client
+# UI / Charts
+# using streamlit's st.bar_chart() so no matplotlib
+
+# Hugging Face client
 huggingface-hub==0.24.6
 requests==2.32.3
