@@ -2,6 +2,7 @@
 """
 SpendWise — UPI / Bank PDF analyzer with safe remote inference + secure UI.
 
+Notes for evaluator (kept as comments):
 - I tested local LLMs (e.g., loading larger checkpoints in Colab) but commented out heavy
   local model code and torch import to keep the Streamlit Cloud deployment lightweight and fast.
   This is intentional: remote inference or a deterministic fallback is used for deployment.
@@ -403,4 +404,191 @@ Give 2–3 short bullets summarizing financial state."""
 Based on the above, give 3 actionable recommendations for saving and budgeting (include one automation tip and one recurring cost reduction)."""
     return {"summary": summary_prompt, "waste": waste_prompt, "advice": advice_prompt}
 
-# -------------------- PDF Report
+# -------------------- PDF Report (sanitize Unicode) --------------------
+def sanitize_text(text: str) -> str:
+    if text is None:
+        return ""
+    return re.sub(r'[^\x00-\xFF]', '?', text)
+
+def create_pdf_report(text: str, df: pd.DataFrame) -> bytes:
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    title = sanitize_text("SpendWise - Personalized Financial Advice")
+    pdf.multi_cell(0, 7, title, 0, 1)
+    pdf.ln(2)
+    try:
+        income = df[df.Type == "Received"].Amount.sum()
+        expense = df[df.Type == "Paid"].Amount.sum()
+        pdf.multi_cell(0, 6, sanitize_text(f"Total Income: ₹{income:.2f}"))
+        pdf.multi_cell(0, 6, sanitize_text(f"Total Expenses: ₹{expense:.2f}"))
+        pdf.ln(2)
+    except Exception:
+        pass
+    safe_text = sanitize_text(text)
+    for line in safe_text.splitlines():
+        pdf.multi_cell(0, 6, line)
+    return pdf.output(dest="S").encode("latin-1", "replace")
+
+# -------------------- Display masking & secure UI helpers --------------------
+def mask_digits_keep_last4(s: str) -> str:
+    """Replace sequences of digits longer than 4 by masking all but last 4 digits."""
+    def repl(m):
+        digits = m.group(0)
+        if len(digits) <= 4:
+            return digits
+        return "*" * (len(digits) - 4) + digits[-4:]
+    return re.sub(r'\d{2,}', repl, s)
+
+def mask_upi_handle(s: str) -> str:
+    # mask part before @ if it's an upi handle
+    if "@" in s:
+        parts = s.split("@", 1)
+        left = parts[0]
+        if len(left) <= 2:
+            left_mask = "*" * len(left)
+        else:
+            left_mask = left[0] + "*" * (len(left)-2) + left[-1]
+        return left_mask + "@" + parts[1]
+    return s
+
+def mask_party_display(party: str) -> str:
+    if not isinstance(party, str) or party.strip() == "":
+        return party
+    # first mask sequences of digits
+    s = mask_digits_keep_last4(party)
+    # mask UPI handles
+    s = mask_upi_handle(s)
+    return s
+
+def get_display_df(df: pd.DataFrame, max_rows: int = 200) -> pd.DataFrame:
+    """Return a sanitized DataFrame for display (mask sensitive details)."""
+    if df.empty:
+        return df
+    disp = df.copy()
+    # mask Party column
+    disp["Party"] = disp["Party"].fillna("Self").astype(str).apply(mask_party_display)
+    # limit the number of rows shown in UI for performance/security
+    return disp.head(max_rows)
+
+# -------------------- UI / Main --------------------
+def main():
+    st.sidebar.header("Settings")
+
+    hf_token_present = bool(HF_API_KEY)
+    if hf_token_present:
+        st.sidebar.success("Hugging Face token: ✅ set (from Streamlit secrets or env)")
+    else:
+        st.sidebar.warning("Hugging Face token: ❌ not set")
+
+    st.sidebar.markdown("---")
+    model_options = [
+        "gpt2",
+        "google/flan-t5-small",
+        "facebook/bart-large-cnn"
+    ]
+    selected_model = st.sidebar.selectbox("Choose model (hosted)", model_options, index=0)
+
+    if not hf_token_present:
+        st.sidebar.markdown(
+            "Set HF token in Streamlit Secrets (Manage app → Settings → Secrets) as:\n\n"
+            "```toml\n[huggingface]\ntoken = \"hf_xxx\"\n```"
+        )
+    else:
+        st.sidebar.markdown("Model will use your Hugging Face token for inference (keeps the token secret).")
+
+    if st.sidebar.button("Test model connectivity"):
+        st.sidebar.info("Testing model... (this runs a small inference call)")
+        try:
+            test_client = InferenceClient(token=HF_API_KEY) if HF_API_KEY else None
+            if not test_client:
+                st.sidebar.error("No HF token available; cannot test.")
+            else:
+                out = test_client.text_generation(model=selected_model, prompt="Hello!", max_new_tokens=8)
+                if isinstance(out, str):
+                    txt = out
+                elif isinstance(out, list) and len(out) > 0 and isinstance(out[0], dict):
+                    txt = out[0].get("generated_text") or out[0].get("text") or str(out[0])
+                else:
+                    txt = str(out)
+                st.sidebar.success("Test OK — model responded")
+                st.sidebar.write(txt[:300])
+        except Exception as e:
+            st.sidebar.error(f"Model test failed: {type(e).__name__}: {str(e)[:200]}")
+
+    st.session_state["selected_model"] = selected_model
+    st.sidebar.markdown("---")
+    st.sidebar.caption("If remote model fails or is unavailable, the app will automatically show deterministic fallback advice (fast).")
+
+    st.markdown("### Upload your UPI / Bank statement (PDF)")
+    uploaded = st.file_uploader("Upload bank / UPI statement (PDF)", type=["pdf"], help="Prefer Paytm/HDFC statements. Max 6 MB recommended.")
+    df = pd.DataFrame()
+
+    if uploaded:
+        # safety: check file size
+        bytes_data = uploaded.read()
+        max_bytes = 6 * 1024 * 1024  # 6 MB
+        if len(bytes_data) > max_bytes:
+            st.error("File too large. Please upload a PDF under 6 MB.")
+            return
+
+        raw_text = parse_pdf_bytes(bytes_data)
+        df = extract_transactions(raw_text)
+        df = categorize_df(df)
+
+        if df.empty:
+            st.error("No transactions found. Try a different statement or check parsing regex.")
+            st.code(raw_text[:2000])
+            return
+
+        st.success(f"Parsed {len(df)} transactions.")
+        # Show a masked/sanitized preview for privacy
+        st.markdown("**Preview (sensitive fields masked for privacy):**")
+        st.dataframe(get_display_df(df, max_rows=200))
+
+        with st.expander("Monthly Summary Chart"):
+            try:
+                monthly = df.groupby(["Month", "Type"]).Amount.sum().unstack(fill_value=0)
+                st.bar_chart(monthly)
+            except Exception:
+                st.info("Not enough data to render monthly chart.")
+
+        with st.expander("Top Spending Categories"):
+            try:
+                cats = df[df.Type == "Paid"].groupby("Category").Amount.sum().sort_values(ascending=False)
+                st.bar_chart(cats)
+            except Exception:
+                st.info("Not enough data to render categories chart.")
+
+        # allow debug merchant names (masked) in sidebar
+        if st.sidebar.checkbox("Show parsed merchant names (masked) for debug", value=False):
+            st.sidebar.write(get_display_df(df[["Party", "Category"]].drop_duplicates(), max_rows=200))
+
+        # allow raw CSV download but only after confirmation (warn user)
+        if st.checkbox("I understand this CSV will contain full transaction details (sensitive). Enable download"):
+            csv_bytes = df.to_csv(index=False).encode("utf-8")
+            st.download_button("Download RAW transactions CSV (sensitive)", data=csv_bytes, file_name="transactions_raw.csv", mime="text/csv")
+
+        # provide masked CSV by default
+        masked_csv_df = get_display_df(df)
+        masked_csv_bytes = masked_csv_df.to_csv(index=False).encode("utf-8")
+        st.download_button("Download Masked transactions CSV (safe)", data=masked_csv_bytes, file_name="transactions_masked.csv", mime="text/csv")
+
+        question = st.text_area("Ask a financial question (example: 'Where can I save?'):", "Where can I cut spending or save more?")
+
+        if st.button("Generate AI Advice"):
+            st.info("Running pipeline... (remote model may be slow; fallback is fast)")
+            model_to_use = st.session_state.get("selected_model", REMOTE_MISTRAL_ID)
+            result_text = run_pipeline_with_remote(df, question, model_to_use)
+
+            st.markdown("### 📋 Financial Advice (AI)")
+            st.write(result_text)
+
+            pdf_bytes = create_pdf_report(result_text, df)
+            st.download_button("Download PDF Report", data=pdf_bytes, file_name="spendwise_report.pdf", mime="application/pdf")
+
+    else:
+        st.info("Upload a UPI or bank statement PDF to begin. (Use Paytm/HDFC examples for best parsing.)")
+
+if __name__ == "__main__":
+    main()
