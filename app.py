@@ -18,8 +18,9 @@ try:
     HF_API_KEY = st.secrets.get("huggingface", {}).get("token", os.getenv("HF_API_KEY"))
 except Exception:
     HF_API_KEY = os.getenv("HF_API_KEY")
+    #REMOTE_MISTRAL_ID = "google/flan-t5-base"
 
-REMOTE_MISTRAL_ID = "mistralai/Mistral-7B-Instruct-v0.2"
+    REMOTE_MISTRAL_ID = "mistralai/Mistral-7B-Instruct-v0.2"
 
 executor = ThreadPoolExecutor(max_workers=2)
 
@@ -269,7 +270,8 @@ def create_pdf_report(text: str, df: pd.DataFrame) -> bytes:
     pdf.ln(2)
     for line in text.splitlines():
         pdf.multi_cell(0, 6, line)
-    return pdf.output(dest="S").encode("utf-8")
+    return pdf.output(dest="S").encode("latin-1", "replace")
+
 
 # -------------------- UI / App --------------------
 def main():
@@ -321,6 +323,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
