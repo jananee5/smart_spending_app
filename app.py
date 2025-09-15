@@ -7,7 +7,7 @@ from typing import Optional, Dict
 import pandas as pd
 import numpy as np
 import streamlit as st
-from fpdf import FPDF
+from fpdf2 import FPDF
 
 from huggingface_hub import InferenceClient 
 from concurrent.futures import ThreadPoolExecutor
@@ -19,8 +19,9 @@ try:
 except Exception:
     HF_API_KEY = os.getenv("HF_API_KEY")
 #REMOTE_MISTRAL_ID = "google/flan-t5-base"
-REMOTE_MISTRAL_ID = "tiiuae/falcon-7b-instruct"
+#REMOTE_MISTRAL_ID = "tiiuae/falcon-7b-instruct"
 #REMOTE_MISTRAL_ID = "mistralai/Mistral-7B-Instruct-v0.2"
+REMOTE_MISTRAL_ID = "gpt2"
 
 executor = ThreadPoolExecutor(max_workers=2)
 
@@ -326,6 +327,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
