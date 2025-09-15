@@ -2,17 +2,15 @@
 import os
 import re
 import io
-import base64
-from typing import Optional, Tuple, Any, Dict
+from typing import Optional, Dict
 
 import pandas as pd
 import numpy as np
 import streamlit as st
 import pdfplumber
 from fpdf import FPDF
-import matplotlib.pyplot as plt
 
-from huggingface_hub import InferenceClient   # ✅ lightweight client
+from huggingface_hub import InferenceClient
 import requests
 from concurrent.futures import ThreadPoolExecutor
 
@@ -23,9 +21,7 @@ try:
 except Exception:
     HF_API_KEY = os.getenv("HF_API_KEY")
 
-DEFAULT_MODEL = "flan-t5-small"   # kept as proof (local model code is commented)
 REMOTE_MISTRAL_ID = "mistral-inference-model-id"
-
 executor = ThreadPoolExecutor(max_workers=2)
 
 # -------------------- Streamlit Page Config --------------------
@@ -52,11 +48,7 @@ st.title("📊 SpendWise — Smart UPI Analyzer")
 # -------------------- UTIL: PDF Parsing --------------------
 def parse_pdf_bytes(file_bytes: bytes) -> str:
     with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
-        pages = []
-        for p in pdf.pages:
-            text = p.extract_text() or ""
-            pages.append(text)
-    return "\n".join(pages)
+        return "\n".join([p.extract_text() or "" for p in pdf.pages])
 
 # -------------------- UTIL: Transaction Extraction --------------------
 DEFAULT_REGEX = re.compile(
@@ -65,8 +57,7 @@ DEFAULT_REGEX = re.compile(
 )
 
 def extract_transactions(text: str, regex: Optional[re.Pattern] = None) -> pd.DataFrame:
-    if regex is None:
-        regex = DEFAULT_REGEX
+    regex = regex or DEFAULT_REGEX
     matches = regex.findall(text)
     transactions = []
     for ttype, amount, party, date in matches:
@@ -130,7 +121,7 @@ def categorize_df(df: pd.DataFrame) -> pd.DataFrame:
     df["Category"] = df["Party"].apply(map_category)
     return df
 
-# -------------------- REMOTE INFERENCE (Hugging Face API) --------------------
+# -------------------- REMOTE INFERENCE --------------------
 client = InferenceClient(token=HF_API_KEY)
 
 def hf_remote_infer(model_id: str, prompt: str, max_tokens: int = 512) -> str:
@@ -143,15 +134,13 @@ def hf_remote_infer(model_id: str, prompt: str, max_tokens: int = 512) -> str:
     )
     return response
 
-# -------------------- PIPELINE (Prompts + Run) --------------------
+# -------------------- PIPELINE --------------------
 def build_prompts(df: pd.DataFrame, question: str) -> Dict[str, str]:
     income = df[df.Type == "Received"].Amount.sum()
     expense = df[df.Type == "Paid"].Amount.sum()
     net = income - expense
 
-    monthly_summary = (
-        df.groupby(["Month", "Type"]).Amount.sum().unstack(fill_value=0).reset_index()
-    )
+    monthly_summary = df.groupby(["Month", "Type"]).Amount.sum().unstack(fill_value=0).reset_index()
     cat_summary = df[df.Type == "Paid"].groupby("Category").Amount.sum().sort_values(ascending=False).head(10)
 
     summary_prompt = f"""You are a helpful financial assistant.
@@ -185,31 +174,6 @@ def run_pipeline_with_remote(df: pd.DataFrame, question: str, model_id: str) -> 
 
 # -------------------- REPORT (PDF) --------------------
 def create_pdf_report(text: str, df: pd.DataFrame) -> bytes:
-    imgs = []
-    monthly = df.groupby(["Month", "Type"]).Amount.sum().unstack(fill_value=0)
-    if not monthly.empty:
-        fig, ax = plt.subplots(figsize=(6, 3))
-        monthly.plot(kind="bar", ax=ax)
-        ax.set_title("Monthly Income vs Expense")
-        ax.set_ylabel("₹")
-        buf = io.BytesIO()
-        fig.tight_layout()
-        fig.savefig(buf, format="png")
-        plt.close(fig)
-        buf.seek(0)
-        imgs.append(buf.read())
-    cats = df[df.Type == "Paid"].groupby("Category").Amount.sum().sort_values(ascending=False).head(10)
-    if not cats.empty:
-        fig, ax = plt.subplots(figsize=(6, 3))
-        cats.plot(kind="bar", ax=ax)
-        ax.set_title("Top Spending Categories")
-        ax.set_ylabel("₹")
-        buf = io.BytesIO()
-        fig.tight_layout()
-        fig.savefig(buf, format="png")
-        plt.close(fig)
-        buf.seek(0)
-        imgs.append(buf.read())
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
@@ -217,13 +181,6 @@ def create_pdf_report(text: str, df: pd.DataFrame) -> bytes:
     pdf.ln(2)
     for line in text.splitlines():
         pdf.multi_cell(0, 6, line)
-    pdf.ln(4)
-    for i, img_bytes in enumerate(imgs):
-        pdf.add_page()
-        img_path = f"/tmp/tmp_chart_{i}.png"
-        with open(img_path, "wb") as f:
-            f.write(img_bytes)
-        pdf.image(img_path, x=10, y=20, w=190)
     return pdf.output(dest="S").encode("utf-8")
 
 # -------------------- UI / App --------------------
