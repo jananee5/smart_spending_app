@@ -12,19 +12,18 @@ import pdfplumber
 from fpdf import FPDF
 import matplotlib.pyplot as plt
 
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from huggingface_hub import InferenceClient   # ✅ lightweight client
 import requests
 from concurrent.futures import ThreadPoolExecutor
 
 # -------------------- Config / ENV --------------------
-# Hugging Face key from secrets
 HF_API_KEY = None
 try:
     HF_API_KEY = st.secrets.get("huggingface", {}).get("token", os.getenv("HF_API_KEY"))
 except Exception:
     HF_API_KEY = os.getenv("HF_API_KEY")
 
-DEFAULT_MODEL = "flan-t5-small"   # local fallback model (lighter)
+DEFAULT_MODEL = "flan-t5-small"   # kept as proof (local model code is commented)
 REMOTE_MISTRAL_ID = "mistral-inference-model-id"
 
 executor = ThreadPoolExecutor(max_workers=2)
@@ -131,31 +130,18 @@ def categorize_df(df: pd.DataFrame) -> pd.DataFrame:
     df["Category"] = df["Party"].apply(map_category)
     return df
 
-# -------------------- MODEL LOADING (LOCAL - optional) --------------------
-@st.cache_resource(show_spinner=False)
-def load_local_flan(model_name: str = DEFAULT_MODEL) -> Tuple[Any, Any]:
-    # ⚠️ Local model loading is slow on Streamlit Cloud (2–3 minutes).
-    tok = AutoTokenizer.from_pretrained(f"google/{model_name}")
-    model = AutoModelForSeq2SeqLM.from_pretrained(f"google/{model_name}")
-    return tok, model
+# -------------------- REMOTE INFERENCE (Hugging Face API) --------------------
+client = InferenceClient(token=HF_API_KEY)
 
-# -------------------- REMOTE INFERENCE --------------------
 def hf_remote_infer(model_id: str, prompt: str, max_tokens: int = 512) -> str:
     if not HF_API_KEY:
         raise RuntimeError("HF_API_KEY not set for remote inference.")
-    url = f"https://api-inference.huggingface.co/models/{model_id}"
-    headers = {"Authorization": f"Bearer {HF_API_KEY}"}
-    payload = {"inputs": prompt, "parameters": {"max_new_tokens": max_tokens}}
-    resp = requests.post(url, headers=headers, json=payload, timeout=120)
-    resp.raise_for_status()
-    output = resp.json()
-    if isinstance(output, list) and "generated_text" in output[0]:
-        return output[0]["generated_text"]
-    if isinstance(output, dict) and "generated_text" in output:
-        return output["generated_text"]
-    if isinstance(output, str):
-        return output
-    return str(output)
+    response = client.text_generation(
+        model=model_id,
+        prompt=prompt,
+        max_new_tokens=max_tokens
+    )
+    return response
 
 # -------------------- PIPELINE (Prompts + Run) --------------------
 def build_prompts(df: pd.DataFrame, question: str) -> Dict[str, str]:
@@ -189,16 +175,6 @@ Based on the above, give 3 actionable recommendations for saving and budgeting (
 
     return {"summary": summary_prompt, "waste": waste_prompt, "advice": advice_prompt}
 
-def run_pipeline_with_local(df: pd.DataFrame, question: str, tokenizer, model, max_new_tokens=256) -> str:
-    prompts = build_prompts(df, question)
-    outputs = []
-    for name, prompt in prompts.items():
-        inputs = tokenizer(prompt, return_tensors="pt", truncation=True)
-        result = model.generate(**inputs, max_new_tokens=max_new_tokens)
-        decoded = tokenizer.decode(result[0], skip_special_tokens=True)
-        outputs.append(f"--- {name.upper()} ---\n{decoded}\n")
-    return "\n".join(outputs)
-
 def run_pipeline_with_remote(df: pd.DataFrame, question: str, model_id: str) -> str:
     prompts = build_prompts(df, question)
     outputs = []
@@ -206,18 +182,6 @@ def run_pipeline_with_remote(df: pd.DataFrame, question: str, model_id: str) -> 
         out = hf_remote_infer(model_id, prompt, max_tokens=512)
         outputs.append(f"--- {name.upper()} ---\n{out}\n")
     return "\n".join(outputs)
-
-# -------------------- LANGFLOW (commented out) --------------------
-# ⚠️ NOTE: Langflow integration was implemented, but commented out
-# for deployment speed. Works locally via localhost, not in cloud.
-#
-# def get_spendwise_advice(transactions: str, question: str) -> str:
-#     if not LANGFLOW_URL:
-#         raise RuntimeError("LANGFLOW_URL not configured.")
-#     payload = {"flow": "SpendWise","inputs": {"transactions": transactions, "question": question}}
-#     resp = requests.post(LANGFLOW_URL, json=payload, timeout=120)
-#     resp.raise_for_status()
-#     return resp.json().get("advice", "No advice returned.")
 
 # -------------------- REPORT (PDF) --------------------
 def create_pdf_report(text: str, df: pd.DataFrame) -> bytes:
@@ -265,7 +229,7 @@ def create_pdf_report(text: str, df: pd.DataFrame) -> bytes:
 # -------------------- UI / App --------------------
 def main():
     st.sidebar.header("Settings")
-    model_choice = st.sidebar.radio("Choose Model:", ("Remote HuggingFace (fast)", "Local FLAN (slow)"))
+    model_choice = st.sidebar.radio("Choose Model:", ("Remote HuggingFace (fast)",))
 
     uploaded = st.file_uploader("Upload bank / UPI statement (PDF)", type=["pdf"])
     df = pd.DataFrame()
@@ -295,17 +259,8 @@ def main():
         question = st.text_area("Ask a financial question:", "Where can I cut spending or save more?")
 
         if st.button("Generate AI Advice"):
-            st.info("Running pipeline... this may take a few seconds depending on model choice.")
-
-            if model_choice.startswith("Local"):
-                st.warning("⚠️ Local model may take 2–3 minutes to load. Use Remote for faster demo.")
-                tokenizer, model = load_local_flan()
-                result_text = run_pipeline_with_local(df, question, tokenizer, model, 256)
-            else:
-                if not HF_API_KEY:
-                    st.error("HF_API_KEY not set. Unable to use remote Hugging Face inference.")
-                    return
-                result_text = run_pipeline_with_remote(df, question, REMOTE_MISTRAL_ID)
+            st.info("Running pipeline... this may take a few seconds.")
+            result_text = run_pipeline_with_remote(df, question, REMOTE_MISTRAL_ID)
 
             st.markdown("### 📋 Financial Advice (AI)")
             st.write(result_text)
