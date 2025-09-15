@@ -20,7 +20,8 @@ try:
 except Exception:
     HF_API_KEY = os.getenv("HF_API_KEY")
 
-REMOTE_MISTRAL_ID = "mistral-inference-model-id"
+REMOTE_MISTRAL_ID = "mistralai/Mistral-7B-Instruct-v0.2"
+
 executor = ThreadPoolExecutor(max_workers=2)
 
 # -------------------- Streamlit Page Config --------------------
@@ -96,33 +97,96 @@ def normalize_type(t):
 
 # -------------------- CATEGORIZATION --------------------
 BROAD_CATEGORIES = {
-    "amazon": "Shopping", "flipkart": "Shopping", "swiggy": "Food",
-    "zomato": "Food", "apollo": "Medical", "pharmacy": "Medical",
-    "hospital": "Medical", "uber": "Transport", "ola": "Transport",
-    "fuel": "Transport", "grocery": "Groceries", "dmart": "Groceries",
-    "reliance": "Groceries", "rent": "Rent", "insurance": "Insurance",
-    "phonepe": "Payments", "paytm": "Payments", "google": "Payments",
-    "gpay": "Payments",
-}
+    # Food & Delivery
+    "swiggy": "Food Delivery",
+    "zomato": "Food Delivery",
+    "zepto": "Groceries",
+    "blinkit": "Groceries",
+    "bbdaily": "Groceries",
+    "dunzo": "Food & Essentials",
 
-DETAILED_MAPPING = {
-    "good to go foodworks private limited": "Food Delivery",
-    "pvr inox": "Entertainment: Movies",
-    "zepto marketplace": "Groceries",
-    "medplus": "Healthcare: Pharmacy",
-    "swiggy limited": "Food Delivery",
-    "rollbaby": "Food & Dining",
-    "phonepe": "Telecom & Recharge",
+    # Groceries & Retail
+    "amazon": "Shopping",
+    "flipkart": "Shopping",
+    "dmart": "Groceries",
+    "reliance": "Groceries",
+    "bigbasket": "Groceries",
+    "more supermarket": "Groceries",
+
+    # Medical & Healthcare
+    "apollo": "Medical",
+    "pharmacy": "Medical",
+    "medplus": "Medical",
+    "hospital": "Medical",
+    "clinic": "Medical",
+
+    # Transport & Fuel
+    "uber": "Transport",
+    "ola": "Transport",
+    "rapido": "Transport",
+    "metro": "Transport",
+    "fuel": "Fuel",
+    "hpcl": "Fuel",
+    "indianoil": "Fuel",
+    "bharat petroleum": "Fuel",
+
+    # Jewellery & Luxury
+    "jewellers": "Jewellery",
+    "tanishq": "Jewellery",
+    "kalyan": "Jewellery",
+    "malabar": "Jewellery",
+    "pc jeweller": "Jewellery",
+
+    # Utilities & Bills
+    "electricity": "Utilities",
+    "water": "Utilities",
+    "gas": "Utilities",
+    "bsnl": "Utilities",
+    "airtel": "Utilities",
+    "jio": "Utilities",
+    "vodafone": "Utilities",
+
+    # Rent & Loans
+    "rent": "Rent",
+    "emi": "Loan EMI",
+    "loan": "Loan Payment",
+    "insurance": "Insurance",
+    "lic": "Insurance",
+
+    # Payments / Wallets
+    "phonepe": "Wallet/UPI",
+    "paytm": "Wallet/UPI",
+    "gpay": "Wallet/UPI",
+    "google pay": "Wallet/UPI",
+    "upi": "UPI Payment",
+
+    # Entertainment
+    "pvr": "Movies",
+    "inox": "Movies",
+    "bookmyshow": "Movies & Events",
+    "spotify": "Entertainment",
+    "netflix": "Entertainment",
+    "hotstar": "Entertainment",
+    "prime video": "Entertainment",
 }
 
 def map_category(party: str) -> str:
     name = party.lower()
-    for k, v in BROAD_CATEGORIES.items():
-        if k in name:
-            return v
-    for k, v in DETAILED_MAPPING.items():
-        if k in name:
-            return v
+
+    # Match detailed keyword mapping
+    for keyword, category in BROAD_CATEGORIES.items():
+        if keyword in name:
+            return category
+
+    # Bank transfers
+    if "neft" in name or "imps" in name or "rtgs" in name or "transfer" in name:
+        return "Bank Transfer"
+
+    # UPI handle detection
+    if "@ok" in name or "@upi" in name or "@paytm" in name or "@icici" in name or "@sbi" in name:
+        return "UPI Payment"
+
+    # Fallback
     return "Other"
 
 def categorize_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -130,6 +194,7 @@ def categorize_df(df: pd.DataFrame) -> pd.DataFrame:
         return df
     df["Category"] = df["Party"].apply(map_category)
     return df
+
 
 # -------------------- REMOTE INFERENCE --------------------
 client = InferenceClient(token=HF_API_KEY)
@@ -243,4 +308,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
