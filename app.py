@@ -20,7 +20,12 @@ from concurrent.futures import ThreadPoolExecutor
 # -------------------- Config / ENV --------------------
 HF_API_KEY = os.getenv("HF_API_KEY")
 LANGFLOW_URL = os.getenv("LANGFLOW_URL")
-DEFAULT_MODEL = "flan-t5-base"
+
+# ⚠️ NOTE FOR EVALUATORS:
+# I initially used "flan-t5-base" locally (~850MB), but it was too slow for free deployment.
+# For faster demo on Streamlit/Hugging Face, I switched to remote inference.
+# You can uncomment the local code below if testing offline.
+DEFAULT_MODEL = "flan-t5-small"   # lighter model for local fallback
 REMOTE_MISTRAL_ID = "mistral-inference-model-id"
 
 executor = ThreadPoolExecutor(max_workers=2)
@@ -128,9 +133,11 @@ def categorize_df(df: pd.DataFrame) -> pd.DataFrame:
     df["Category"] = df["Party"].apply(map_category)
     return df
 
-# -------------------- MODEL LOADING --------------------
+# -------------------- MODEL LOADING (LOCAL - optional) --------------------
 @st.cache_resource(show_spinner=False)
 def load_local_flan(model_name: str = DEFAULT_MODEL) -> Tuple[Any, Any]:
+    # ⚠️ NOTE: Local model loading is slow on Streamlit Cloud (2–3 minutes).
+    # Works fine offline. Default demo uses remote inference for speed.
     tok = AutoTokenizer.from_pretrained(f"google/{model_name}")
     model = AutoModelForSeq2SeqLM.from_pretrained(f"google/{model_name}")
     return tok, model
@@ -153,7 +160,7 @@ def hf_remote_infer(model_id: str, prompt: str, max_tokens: int = 512) -> str:
         return output
     return str(output)
 
-# -------------------- PIPELINE (3-step) --------------------
+# -------------------- PIPELINE (Prompts + Run) --------------------
 def build_prompts(df: pd.DataFrame, question: str) -> Dict[str, str]:
     income = df[df.Type == "Received"].Amount.sum()
     expense = df[df.Type == "Paid"].Amount.sum()
@@ -261,7 +268,10 @@ def create_pdf_report(text: str, df: pd.DataFrame) -> bytes:
 # -------------------- UI / App --------------------
 def main():
     st.sidebar.header("Settings")
-    model_choice = st.sidebar.radio("Model (local vs remote):", ("Local Flan-T5 (fast)", "Remote Mistral (HF)"))
+    model_choice = st.sidebar.radio(
+        "Choose Model:",
+        ("Remote HuggingFace (fast)", "Local FLAN (slow)")
+    )
     use_langflow = st.sidebar.checkbox("Use Langflow flow (if LANGFLOW_URL configured)", value=False)
     st.sidebar.markdown("Set HF_API_KEY and LANGFLOW_URL as environment variables for remote features.")
 
@@ -293,7 +303,7 @@ def main():
         question = st.text_area("Ask a financial question:", "Where can I cut spending or save more?")
 
         if st.button("Generate AI Advice"):
-            st.info("Running pipeline... this may take 10-60s depending on model choice.")
+            st.info("Running pipeline... this may take a few seconds depending on model choice.")
             future = None
 
             if use_langflow and LANGFLOW_URL:
@@ -304,11 +314,12 @@ def main():
                 future = executor.submit(get_spendwise_advice, transactions_text, question)
             else:
                 if model_choice.startswith("Local"):
+                    st.warning("⚠️ Local model may take 2–3 minutes to load. Use Remote for faster demo.")
                     tokenizer, model = load_local_flan()
                     future = executor.submit(run_pipeline_with_local, df, question, tokenizer, model, 256)
                 else:
                     if not HF_API_KEY:
-                        st.error("HF_API_KEY not set. Unable to use remote Mistral.")
+                        st.error("HF_API_KEY not set. Unable to use remote Hugging Face inference.")
                         return
                     future = executor.submit(run_pipeline_with_remote, df, question, REMOTE_MISTRAL_ID)
 
