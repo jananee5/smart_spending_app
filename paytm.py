@@ -1,13 +1,8 @@
 # app.py
 """
-SpendWise — UPI / Bank PDF analyzer with safe remote inference + secure UI.
-
-Notes for evaluator (kept as comments):
-- I tested local LLMs (e.g., loading larger checkpoints in Colab) but commented out heavy
-  local model code and torch import to keep the Streamlit Cloud deployment lightweight and fast.
-  This is intentional: remote inference or a deterministic fallback is used for deployment.
+SpendWise — Secure UPI & Bank Statement Analyzer
+Includes cash-flow visuals + risk indicator + recurring payments detector.
 """
-
 import os
 import re
 import io
@@ -25,36 +20,28 @@ from huggingface_hub.utils._errors import HfHubHTTPError
 
 from concurrent.futures import ThreadPoolExecutor
 import traceback
+import matplotlib.pyplot as plt
 
-# -------------------- Config / ENV (do not print token anywhere) --------------------
+# -------------------- Config / ENV --------------------
 HF_API_KEY = None
 try:
     HF_API_KEY = st.secrets.get("huggingface", {}).get("token", os.getenv("HF_API_KEY"))
 except Exception:
     HF_API_KEY = os.getenv("HF_API_KEY")
 
-# Commented model choices (I tried larger models locally, but commented to speed up cloud deploy)
-# LOCAL_MODEL = "local/flan-t5-large"   # (example) - tested in Colab only
-# REMOTE_MISTRAL_ID = "mistralai/Mistral-7B-Instruct-v0.2"
-# REMOTE_MISTRAL_ID = "google/flan-t5-base"
-
-# Use a lightweight demo default; user may pick another from sidebar list
 REMOTE_MISTRAL_ID = "gpt2"
 
-# create client only if token present
 client = None
 if HF_API_KEY:
     try:
         client = InferenceClient(token=HF_API_KEY)
     except Exception as e:
-        # don't crash the app — we will fallback to deterministic advice
-        print("Warning: Hugging Face InferenceClient could not be created:", e)
+        print("Warning: could not create HF client:", e)
         client = None
 
 executor = ThreadPoolExecutor(max_workers=2)
 
-# -------------------- Streamlit Page Config --------------------
-st.set_page_config(page_title="SpendWise — Secure UPI Analyzer", layout="wide")
+st.set_page_config(page_title="SpendWise — Cash Flow Visualizer", layout="wide")
 
 # -------------------- Background + readability CSS --------------------
 def set_background(url: str):
@@ -71,31 +58,37 @@ def set_background(url: str):
             content: "";
             position: absolute;
             inset: 0;
-            background: rgba(255,255,255,0.88); /* light overlay to keep text readable */
+            background: rgba(255,255,255,0.88);
             z-index: 0;
             pointer-events: none;
         }}
-        /* ensure main content renders above overlay */
         .reportview-container .main, .stApp > .main {{
             position: relative;
             z-index: 1;
         }}
+        /* traffic-light styles */
+        .risk-badge {{
+            padding: 12px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            display: inline-block;
+            min-width: 220px;
+            text-align: center;
+        }}
         </style>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
-# A readable illustration link (you provided Vecteezy earlier)
 set_background("https://static.vecteezy.com/system/resources/previews/019/154/472/large_2x/inflation-illustration-set-characters-buying-food-in-supermarket-and-worries-about-groceries-rising-price-vector.jpg")
 
-st.title("📊 SpendWise — Secure UPI & Bank Statement Analyzer")
+st.title("📊 SpendWise — Cash Flow & UPI Analyzer (Upgraded Visuals)")
 
-# -------------------- PDF text extraction --------------------
+# -------------------- PDF parsing --------------------
 def parse_pdf_bytes(file_bytes: bytes) -> str:
-    """Extract text from PDF bytes using pypdf."""
     reader = PdfReader(io.BytesIO(file_bytes))
     pages = []
-    # limit pages parsed to avoid huge files; adjust as needed
     max_pages = min(len(reader.pages), 200)
     for i in range(max_pages):
         try:
@@ -106,22 +99,14 @@ def parse_pdf_bytes(file_bytes: bytes) -> str:
             pages.append(text)
     return "\n".join(pages)
 
-# -------------------- Transaction extraction (robust, tag-aware, year inference) --------------------
-# fallback regex for quick matches
+# -------------------- Transaction extraction (robust) --------------------
 DEFAULT_REGEX = re.compile(
     r"(Paid to|Money sent to|Received from|Credited to|Paid)\s+(.+?)\n.*?-?\s*Rs\.?([\d,]+(?:\.\d+)?)",
     re.IGNORECASE
 )
 
 def extract_transactions(text: str) -> pd.DataFrame:
-    """
-    Robustly extract transactions:
-    - Infers statement end-year if provided (e.g., "1 DEC'24 - 31 MAY'25") and uses it
-      to disambiguate day+month dates.
-    - Scans for 'Paid to' / 'Money sent to' blocks and looks ahead for Tag: # ...
-    - Returns DataFrame with Date, Type, Amount, Party, Tag, RawDate.
-    """
-    # infer end-year from header if available
+    # infer end-year from header (e.g., 1 DEC'24 - 31 MAY'25)
     end_year = None
     try:
         m_range = re.search(r"\b\d{1,2}\s+[A-Za-z]{3}'\d{2}\s*-\s*\d{1,2}\s+[A-Za-z]{3}'\d{2}\b", text)
@@ -138,42 +123,33 @@ def extract_transactions(text: str) -> pd.DataFrame:
     i = 0
     while i < len(lines):
         line = lines[i]
-
         if line.lower().startswith(("paid to ", "money sent to ", "received from ", "credited to ", "paid ")):
             party = re.sub(r'^(paid to|money sent to|received from|credited to|paid)\s+', '', line, flags=re.I).strip()
             amount = None
             date = None
             tag = None
-
-            # look ahead for amount/date/tag
             for j in range(i, min(i + 9, len(lines))):
                 ln = lines[j]
                 m_amt = re.search(r'Rs\.?\s*([\d,]+(?:\.\d+)?)', ln, flags=re.I)
                 if m_amt and amount is None:
                     amount = m_amt.group(1)
-
-                # date patterns "May 31" or "31 May" optionally with year
                 m_date = re.search(r'([A-Za-z]{3,9}\s+\d{1,2}(?:,\s*\d{4})?)', ln)
                 if not m_date:
                     m_date = re.search(r'(\d{1,2}\s+[A-Za-z]{3,9}(?:,\s*\d{4})?)', ln)
                 if m_date and date is None:
                     date_str = m_date.group(1)
                     if not re.search(r'\d{4}', date_str) and end_year:
-                        # append inferred year
                         candidate = pd.to_datetime(f"{date_str}, {end_year}", errors="coerce")
                         date = candidate if pd.notna(candidate) else pd.to_datetime(date_str, errors="coerce")
                     else:
                         date = pd.to_datetime(date_str, errors="coerce")
-
                 m_tag = re.search(r'Tag:\s*#\s*([^\s]+)', ln, flags=re.I)
                 if m_tag and tag is None:
                     tag = m_tag.group(1).strip()
-
             try:
                 amt_val = float(amount.replace(",", "")) if amount else 0.0
             except Exception:
                 amt_val = 0.0
-
             transactions.append({
                 "Date": date if date is not None else pd.NaT,
                 "Type": "Paid" if 'paid' in line.lower() or 'money sent' in line.lower() else "Received",
@@ -184,8 +160,6 @@ def extract_transactions(text: str) -> pd.DataFrame:
             })
             i += 1
             continue
-
-        # fallback if a line contains an amount but not the typical prefix
         fallback = DEFAULT_REGEX.search(line)
         if fallback:
             ttype = fallback.group(1)
@@ -211,7 +185,6 @@ def extract_transactions(text: str) -> pd.DataFrame:
                 "RawDate": ""
             })
         i += 1
-
     df = pd.DataFrame(transactions)
     if df.empty:
         return df
@@ -227,7 +200,7 @@ def normalize_type(t):
         return "Paid"
     return t.capitalize()
 
-# -------------------- Categorization (Tag-preferred, then keyword) --------------------
+# -------------------- Categorization --------------------
 BROAD_CATEGORIES = {
     "swiggy": "Food",
     "zomato": "Food",
@@ -268,7 +241,6 @@ DETAILED_MAPPING = {
 }
 
 def map_category(party: str, tag: str = "") -> str:
-    # use explicit tag first
     if tag:
         t = tag.lower().strip("️")
         if "food" in t:
@@ -284,7 +256,6 @@ def map_category(party: str, tag: str = "") -> str:
         if "transfer" in t:
             return "Transfers"
         return t.capitalize()
-
     name = (party or "").lower()
     name = re.sub(r'\b(ltd|pvt|private|limited|india|inc|co)\b', '', name)
     for keyword, category in BROAD_CATEGORIES.items():
@@ -304,7 +275,44 @@ def categorize_df(df: pd.DataFrame) -> pd.DataFrame:
         df["Category"] = df["Party"].apply(lambda p: map_category(p, ""))
     return df
 
-# -------------------- HF remote inference helpers + fallback --------------------
+# -------------------- Helpers for visuals & detection --------------------
+def compute_cash_flow(df: pd.DataFrame) -> pd.DataFrame:
+    # Create a daily cumulative balance (Received positive, Paid negative)
+    if df.empty:
+        return pd.DataFrame()
+    d = df.copy()
+    d = d.sort_values("Date").reset_index(drop=True)
+    # treat Received as +, Paid as -
+    d["Signed"] = d.apply(lambda r: r["Amount"] if r["Type"] == "Received" else -r["Amount"], axis=1)
+    daily = d.groupby(d["Date"].dt.date).Signed.sum().cumsum()
+    cashflow_df = daily.reset_index().rename(columns={"Date": "Date", 0: "Cumulative"})
+    cashflow_df.columns = ["Date", "Cumulative"]
+    return cashflow_df
+
+def detect_recurring(df: pd.DataFrame, min_occurrences: int = 3) -> pd.DataFrame:
+    # Find parties with repeated transactions (>= min_occurrences)
+    if df.empty:
+        return pd.DataFrame(columns=["Party", "Count", "AvgAmount"])
+    grp = df[df.Type == "Paid"].groupby("Party").Amount.agg(["count", "mean"]).reset_index()
+    rec = grp[grp["count"] >= min_occurrences].sort_values("count", ascending=False)
+    rec = rec.rename(columns={"count": "Count", "mean": "AvgAmount"})
+    return rec
+
+def risk_level_summary(df: pd.DataFrame) -> Dict[str, Any]:
+    # returns dict with status, color, advice
+    income = df[df.Type == "Received"].Amount.sum() if not df.empty else 0.0
+    expense = df[df.Type == "Paid"].Amount.sum() if not df.empty else 0.0
+    ratio = expense / (income if income > 0 else (expense if expense > 0 else 1))
+    # ratio >1 means expenses exceed income
+    if ratio > 1.0:
+        return {"level": "Danger — Overspending", "color": "#d9534f", "advice": "Expenses exceed income. Immediate review required: pause discretionary spends, check subscriptions."}
+    if ratio > 0.8:
+        return {"level": "High — Close to limit", "color": "#f0ad4e", "advice": "Your expenses are near your income. Try cutting 10–20% from top categories."}
+    if ratio > 0.5:
+        return {"level": "Moderate", "color": "#ffc107", "advice": "Spending is moderate. Look at recurring costs and reduce small frequent spends."}
+    return {"level": "Healthy", "color": "#28a745", "advice": "Good — expenses are well below income. Consider automating savings."}
+
+# -------------------- HF inference + fallback (unchanged) --------------------
 def _normalize_hf_output(output: Any) -> str:
     try:
         if isinstance(output, str):
@@ -336,7 +344,6 @@ def generate_simple_advice(df: pd.DataFrame, question: str) -> str:
     expense = df[df.Type == "Paid"].Amount.sum() if not df.empty else 0.0
     net = income - expense
     top_cats = df[df.Type == "Paid"].groupby("Category").Amount.sum().sort_values(ascending=False).head(5) if not df.empty else pd.Series(dtype=float)
-
     lines = []
     lines.append("Summary (fallback):")
     lines.append(f"Total Income: ₹{income:.2f}")
@@ -358,21 +365,6 @@ def generate_simple_advice(df: pd.DataFrame, question: str) -> str:
         lines.append("- Automate 10% of income to savings if possible.")
     return "\n".join(lines)
 
-def run_pipeline_with_remote(df: pd.DataFrame, question: str, model_id: str) -> str:
-    prompts = build_prompts(df, question)
-    outputs = []
-    try:
-        for name, prompt in prompts.items():
-            out = hf_remote_infer(model_id, prompt, max_tokens=512)
-            outputs.append(f"--- {name.upper()} ---\n{out}\n")
-        return "\n".join(outputs)
-    except Exception:
-        print("Remote inference failed — falling back to deterministic advice.")
-        traceback.print_exc()
-        fallback = generate_simple_advice(df, question)
-        return ("⚠️ Remote model unavailable or returned an error. Showing fallback advice below.\n\n" + fallback)
-
-# -------------------- Prompts builder --------------------
 def build_prompts(df: pd.DataFrame, question: str) -> Dict[str, str]:
     income = df[df.Type == "Received"].Amount.sum() if not df.empty else 0.0
     expense = df[df.Type == "Paid"].Amount.sum() if not df.empty else 0.0
@@ -404,7 +396,21 @@ Give 2–3 short bullets summarizing financial state."""
 Based on the above, give 3 actionable recommendations for saving and budgeting (include one automation tip and one recurring cost reduction)."""
     return {"summary": summary_prompt, "waste": waste_prompt, "advice": advice_prompt}
 
-# -------------------- PDF Report (sanitize Unicode) --------------------
+def run_pipeline_with_remote(df: pd.DataFrame, question: str, model_id: str) -> str:
+    prompts = build_prompts(df, question)
+    outputs = []
+    try:
+        for name, prompt in prompts.items():
+            out = hf_remote_infer(model_id, prompt, max_tokens=512)
+            outputs.append(f"--- {name.upper()} ---\n{out}\n")
+        return "\n".join(outputs)
+    except Exception:
+        print("Remote inference failed — falling back to deterministic advice.")
+        traceback.print_exc()
+        fallback = generate_simple_advice(df, question)
+        return ("⚠️ Remote model unavailable or returned an error. Showing fallback advice below.\n\n" + fallback)
+
+# -------------------- PDF report --------------------
 def sanitize_text(text: str) -> str:
     if text is None:
         return ""
@@ -430,9 +436,8 @@ def create_pdf_report(text: str, df: pd.DataFrame) -> bytes:
         pdf.multi_cell(0, 6, line)
     return pdf.output(dest="S").encode("latin-1", "replace")
 
-# -------------------- Display masking & secure UI helpers --------------------
+# -------------------- Display masking --------------------
 def mask_digits_keep_last4(s: str) -> str:
-    """Replace sequences of digits longer than 4 by masking all but last 4 digits."""
     def repl(m):
         digits = m.group(0)
         if len(digits) <= 4:
@@ -441,7 +446,6 @@ def mask_digits_keep_last4(s: str) -> str:
     return re.sub(r'\d{2,}', repl, s)
 
 def mask_upi_handle(s: str) -> str:
-    # mask part before @ if it's an upi handle
     if "@" in s:
         parts = s.split("@", 1)
         left = parts[0]
@@ -455,56 +459,38 @@ def mask_upi_handle(s: str) -> str:
 def mask_party_display(party: str) -> str:
     if not isinstance(party, str) or party.strip() == "":
         return party
-    # first mask sequences of digits
     s = mask_digits_keep_last4(party)
-    # mask UPI handles
     s = mask_upi_handle(s)
     return s
 
 def get_display_df(df: pd.DataFrame, max_rows: int = 200) -> pd.DataFrame:
-    """Return a sanitized DataFrame for display (mask sensitive details)."""
     if df.empty:
         return df
     disp = df.copy()
-    # mask Party column
     disp["Party"] = disp["Party"].fillna("Self").astype(str).apply(mask_party_display)
-    # limit the number of rows shown in UI for performance/security
     return disp.head(max_rows)
 
 # -------------------- UI / Main --------------------
 def main():
     st.sidebar.header("Settings")
-
     hf_token_present = bool(HF_API_KEY)
     if hf_token_present:
-        st.sidebar.success("Hugging Face token: ✅ set (from Streamlit secrets or env)")
+        st.sidebar.success("Hugging Face token: ✅ set")
     else:
         st.sidebar.warning("Hugging Face token: ❌ not set")
 
     st.sidebar.markdown("---")
-    model_options = [
-        "gpt2",
-        "google/flan-t5-small",
-        "facebook/bart-large-cnn"
-    ]
+    model_options = ["gpt2", "google/flan-t5-small", "facebook/bart-large-cnn"]
     selected_model = st.sidebar.selectbox("Choose model (hosted)", model_options, index=0)
 
-    if not hf_token_present:
-        st.sidebar.markdown(
-            "Set HF token in Streamlit Secrets (Manage app → Settings → Secrets) as:\n\n"
-            "```toml\n[huggingface]\ntoken = \"hf_xxx\"\n```"
-        )
-    else:
-        st.sidebar.markdown("Model will use your Hugging Face token for inference (keeps the token secret).")
-
     if st.sidebar.button("Test model connectivity"):
-        st.sidebar.info("Testing model... (this runs a small inference call)")
+        st.sidebar.info("Testing model...")
         try:
             test_client = InferenceClient(token=HF_API_KEY) if HF_API_KEY else None
             if not test_client:
                 st.sidebar.error("No HF token available; cannot test.")
             else:
-                out = test_client.text_generation(model=selected_model, prompt="Hello!", max_new_tokens=8)
+                out = test_client.text_generation(model=selected_model, prompt="Hello!", max_new_tokens=6)
                 if isinstance(out, str):
                     txt = out
                 elif isinstance(out, list) and len(out) > 0 and isinstance(out[0], dict):
@@ -518,18 +504,16 @@ def main():
 
     st.session_state["selected_model"] = selected_model
     st.sidebar.markdown("---")
-    st.sidebar.caption("If remote model fails or is unavailable, the app will automatically show deterministic fallback advice (fast).")
+    st.sidebar.caption("If remote model fails, deterministic fallback is shown.")
 
     st.markdown("### Upload your UPI / Bank statement (PDF)")
-    uploaded = st.file_uploader("Upload bank / UPI statement (PDF)", type=["pdf"], help="Prefer Paytm/HDFC statements. Max 6 MB recommended.")
+    uploaded = st.file_uploader("Upload bank / UPI statement (PDF)", type=["pdf"], help="Prefer Paytm/HDFC statements.")
     df = pd.DataFrame()
 
     if uploaded:
-        # safety: check file size
         bytes_data = uploaded.read()
-        max_bytes = 6 * 1024 * 1024  # 6 MB
-        if len(bytes_data) > max_bytes:
-            st.error("File too large. Please upload a PDF under 6 MB.")
+        if len(bytes_data) > 8 * 1024 * 1024:
+            st.error("Uploaded file is too large — please use a smaller PDF (<8MB).")
             return
 
         raw_text = parse_pdf_bytes(bytes_data)
@@ -542,53 +526,79 @@ def main():
             return
 
         st.success(f"Parsed {len(df)} transactions.")
-        # Show a masked/sanitized preview for privacy
-        st.markdown("**Preview (sensitive fields masked for privacy):**")
+        st.markdown("**Preview (sensitive fields masked):**")
         st.dataframe(get_display_df(df, max_rows=200))
 
-        with st.expander("Monthly Summary Chart"):
-            try:
-                monthly = df.groupby(["Month", "Type"]).Amount.sum().unstack(fill_value=0)
-                st.bar_chart(monthly)
-            except Exception:
-                st.info("Not enough data to render monthly chart.")
+        # CASH FLOW visualization
+        with st.expander("Cash Flow — cumulative balance over time (click to expand)"):
+            cashflow_df = compute_cash_flow(df)
+            if cashflow_df.empty:
+                st.info("Not enough data to compute cash flow.")
+            else:
+                # area chart using matplotlib for more control / color
+                fig, ax = plt.subplots(figsize=(9, 3))
+                ax.fill_between(pd.to_datetime(cashflow_df["Date"]), cashflow_df["Cumulative"], alpha=0.3)
+                ax.plot(pd.to_datetime(cashflow_df["Date"]), cashflow_df["Cumulative"], linewidth=2)
+                ax.set_title("Cumulative Cash Flow")
+                ax.set_ylabel("Balance (₹)")
+                plt.xticks(rotation=30)
+                fig.tight_layout()
+                st.pyplot(fig)
 
-        with st.expander("Top Spending Categories"):
-            try:
-                cats = df[df.Type == "Paid"].groupby("Category").Amount.sum().sort_values(ascending=False)
-                st.bar_chart(cats)
-            except Exception:
-                st.info("Not enough data to render categories chart.")
+        # SPENDING BY CATEGORY (colorful bar)
+        with st.expander("Spending by Category"):
+            cats = df[df.Type == "Paid"].groupby("Category").Amount.sum().sort_values(ascending=False)
+            if cats.empty:
+                st.info("No Paid transactions to show.")
+            else:
+                fig2, ax2 = plt.subplots(figsize=(8, 3))
+                bars = ax2.bar(cats.index, cats.values)
+                ax2.set_title("Top Spending Categories")
+                ax2.set_ylabel("₹")
+                plt.xticks(rotation=45, ha="right")
+                fig2.tight_layout()
+                st.pyplot(fig2)
 
-        # allow debug merchant names (masked) in sidebar
+        # RISK / CAUTION INDICATOR
+        rl = risk_level_summary(df)
+        # color badge HTML
+        st.markdown(f"""<div class="risk-badge" style="background:{rl['color']};">{rl['level']}</div>""", unsafe_allow_html=True)
+        st.write(rl["advice"])
+
+        # RECURRING PAYMENTS
+        with st.expander("Recurring / Frequent Payments (possible subscriptions)"):
+            rec = detect_recurring(df, min_occurrences=3)
+            if rec.empty:
+                st.info("No frequent recurring merchants detected.")
+            else:
+                rec_display = rec.copy()
+                rec_display["AvgAmount"] = rec_display["AvgAmount"].map(lambda x: f"₹{x:,.2f}")
+                st.table(rec_display.head(20))
+
+        # Show parsed merchant names (masked)
         if st.sidebar.checkbox("Show parsed merchant names (masked) for debug", value=False):
             st.sidebar.write(get_display_df(df[["Party", "Category"]].drop_duplicates(), max_rows=200))
 
-        # allow raw CSV download but only after confirmation (warn user)
+        # Downloads (masked/raw with confirmation)
         if st.checkbox("I understand this CSV will contain full transaction details (sensitive). Enable download"):
-            csv_bytes = df.to_csv(index=False).encode("utf-8")
-            st.download_button("Download RAW transactions CSV (sensitive)", data=csv_bytes, file_name="transactions_raw.csv", mime="text/csv")
+            raw_csv = df.to_csv(index=False).encode("utf-8")
+            st.download_button("Download RAW transactions CSV (sensitive)", data=raw_csv, file_name="transactions_raw.csv", mime="text/csv")
+        masked_csv = get_display_df(df).to_csv(index=False).encode("utf-8")
+        st.download_button("Download Masked transactions CSV (safe)", data=masked_csv, file_name="transactions_masked.csv", mime="text/csv")
 
-        # provide masked CSV by default
-        masked_csv_df = get_display_df(df)
-        masked_csv_bytes = masked_csv_df.to_csv(index=False).encode("utf-8")
-        st.download_button("Download Masked transactions CSV (safe)", data=masked_csv_bytes, file_name="transactions_masked.csv", mime="text/csv")
-
+        # Question + AI / fallback
         question = st.text_area("Ask a financial question (example: 'Where can I save?'):", "Where can I cut spending or save more?")
-
         if st.button("Generate AI Advice"):
-            st.info("Running pipeline... (remote model may be slow; fallback is fast)")
+            st.info("Generating advice (remote model attempted; fallback used if unavailable).")
             model_to_use = st.session_state.get("selected_model", REMOTE_MISTRAL_ID)
             result_text = run_pipeline_with_remote(df, question, model_to_use)
-
             st.markdown("### 📋 Financial Advice (AI)")
             st.write(result_text)
-
             pdf_bytes = create_pdf_report(result_text, df)
             st.download_button("Download PDF Report", data=pdf_bytes, file_name="spendwise_report.pdf", mime="application/pdf")
 
     else:
-        st.info("Upload a UPI or bank statement PDF to begin. (Use Paytm/HDFC examples for best parsing.)")
+        st.info("Upload a UPI or bank statement PDF to begin. (Try Paytm/HDFC samples.)")
 
 if __name__ == "__main__":
     main()
