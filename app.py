@@ -3,7 +3,7 @@ import os
 import re
 import io
 import base64
-from typing import Optional, Tuple, Dict, Any, List
+from typing import Optional, Tuple, Any, Dict
 
 import pandas as pd
 import numpy as np
@@ -12,28 +12,26 @@ import pdfplumber
 from fpdf import FPDF
 import matplotlib.pyplot as plt
 
-# Transformers and HTTP for remote inference
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import requests
 from concurrent.futures import ThreadPoolExecutor
 
 # -------------------- Config / ENV --------------------
-HF_API_KEY = os.getenv("HF_API_KEY")
-LANGFLOW_URL = os.getenv("LANGFLOW_URL")
+# Hugging Face key from secrets
+HF_API_KEY = None
+try:
+    HF_API_KEY = st.secrets.get("huggingface", {}).get("token", os.getenv("HF_API_KEY"))
+except Exception:
+    HF_API_KEY = os.getenv("HF_API_KEY")
 
-# ⚠️ NOTE FOR EVALUATORS:
-# I initially used "flan-t5-base" locally (~850MB), but it was too slow for free deployment.
-# For faster demo on Streamlit/Hugging Face, I switched to remote inference.
-# You can uncomment the local code below if testing offline.
-DEFAULT_MODEL = "flan-t5-small"   # lighter model for local fallback
+DEFAULT_MODEL = "flan-t5-small"   # local fallback model (lighter)
 REMOTE_MISTRAL_ID = "mistral-inference-model-id"
 
 executor = ThreadPoolExecutor(max_workers=2)
 
 # -------------------- Streamlit Page Config --------------------
-st.set_page_config(page_title="SpendWise — Refactored", layout="wide")
+st.set_page_config(page_title="SpendWise", layout="wide")
 
-# 🔹 Set background image
 def set_background(url: str):
     st.markdown(
         f"""
@@ -50,7 +48,7 @@ def set_background(url: str):
 
 set_background("https://wallpaperaccess.com/full/3457552.jpg")
 
-st.title("📊 SpendWise — Refactored: Mistral + FLAN + Langflow-ready")
+st.title("📊 SpendWise — Smart UPI Analyzer")
 
 # -------------------- UTIL: PDF Parsing --------------------
 def parse_pdf_bytes(file_bytes: bytes) -> str:
@@ -136,8 +134,7 @@ def categorize_df(df: pd.DataFrame) -> pd.DataFrame:
 # -------------------- MODEL LOADING (LOCAL - optional) --------------------
 @st.cache_resource(show_spinner=False)
 def load_local_flan(model_name: str = DEFAULT_MODEL) -> Tuple[Any, Any]:
-    # ⚠️ NOTE: Local model loading is slow on Streamlit Cloud (2–3 minutes).
-    # Works fine offline. Default demo uses remote inference for speed.
+    # ⚠️ Local model loading is slow on Streamlit Cloud (2–3 minutes).
     tok = AutoTokenizer.from_pretrained(f"google/{model_name}")
     model = AutoModelForSeq2SeqLM.from_pretrained(f"google/{model_name}")
     return tok, model
@@ -210,17 +207,17 @@ def run_pipeline_with_remote(df: pd.DataFrame, question: str, model_id: str) -> 
         outputs.append(f"--- {name.upper()} ---\n{out}\n")
     return "\n".join(outputs)
 
-# -------------------- LANGFLOW (unified) --------------------
-def get_spendwise_advice(transactions: str, question: str) -> str:
-    if not LANGFLOW_URL:
-        raise RuntimeError("LANGFLOW_URL not configured in Streamlit secrets.")
-    payload = {
-        "flow": "SpendWise",
-        "inputs": {"transactions": transactions, "question": question}
-    }
-    resp = requests.post(LANGFLOW_URL, json=payload, timeout=120)
-    resp.raise_for_status()
-    return resp.json().get("advice", "No advice returned.")
+# -------------------- LANGFLOW (commented out) --------------------
+# ⚠️ NOTE: Langflow integration was implemented, but commented out
+# for deployment speed. Works locally via localhost, not in cloud.
+#
+# def get_spendwise_advice(transactions: str, question: str) -> str:
+#     if not LANGFLOW_URL:
+#         raise RuntimeError("LANGFLOW_URL not configured.")
+#     payload = {"flow": "SpendWise","inputs": {"transactions": transactions, "question": question}}
+#     resp = requests.post(LANGFLOW_URL, json=payload, timeout=120)
+#     resp.raise_for_status()
+#     return resp.json().get("advice", "No advice returned.")
 
 # -------------------- REPORT (PDF) --------------------
 def create_pdf_report(text: str, df: pd.DataFrame) -> bytes:
@@ -268,12 +265,7 @@ def create_pdf_report(text: str, df: pd.DataFrame) -> bytes:
 # -------------------- UI / App --------------------
 def main():
     st.sidebar.header("Settings")
-    model_choice = st.sidebar.radio(
-        "Choose Model:",
-        ("Remote HuggingFace (fast)", "Local FLAN (slow)")
-    )
-    use_langflow = st.sidebar.checkbox("Use Langflow flow (if LANGFLOW_URL configured)", value=False)
-    st.sidebar.markdown("Set HF_API_KEY and LANGFLOW_URL as environment variables for remote features.")
+    model_choice = st.sidebar.radio("Choose Model:", ("Remote HuggingFace (fast)", "Local FLAN (slow)"))
 
     uploaded = st.file_uploader("Upload bank / UPI statement (PDF)", type=["pdf"])
     df = pd.DataFrame()
@@ -304,31 +296,16 @@ def main():
 
         if st.button("Generate AI Advice"):
             st.info("Running pipeline... this may take a few seconds depending on model choice.")
-            future = None
 
-            if use_langflow and LANGFLOW_URL:
-                transactions_text = "; ".join(
-                    f"{row['Type']} ₹{row['Amount']} to {row['Party']} on {row['Date'].strftime('%Y-%m-%d')}"
-                    for _, row in df.iterrows()
-                )
-                future = executor.submit(get_spendwise_advice, transactions_text, question)
+            if model_choice.startswith("Local"):
+                st.warning("⚠️ Local model may take 2–3 minutes to load. Use Remote for faster demo.")
+                tokenizer, model = load_local_flan()
+                result_text = run_pipeline_with_local(df, question, tokenizer, model, 256)
             else:
-                if model_choice.startswith("Local"):
-                    st.warning("⚠️ Local model may take 2–3 minutes to load. Use Remote for faster demo.")
-                    tokenizer, model = load_local_flan()
-                    future = executor.submit(run_pipeline_with_local, df, question, tokenizer, model, 256)
-                else:
-                    if not HF_API_KEY:
-                        st.error("HF_API_KEY not set. Unable to use remote Hugging Face inference.")
-                        return
-                    future = executor.submit(run_pipeline_with_remote, df, question, REMOTE_MISTRAL_ID)
-
-            with st.spinner("Generating advice..."):
-                try:
-                    result_text = future.result(timeout=180)
-                except Exception as e:
-                    st.error(f"Pipeline error: {e}")
+                if not HF_API_KEY:
+                    st.error("HF_API_KEY not set. Unable to use remote Hugging Face inference.")
                     return
+                result_text = run_pipeline_with_remote(df, question, REMOTE_MISTRAL_ID)
 
             st.markdown("### 📋 Financial Advice (AI)")
             st.write(result_text)
