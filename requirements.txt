@@ -7,7 +7,7 @@ numpy==2.1.1
 pypdf
 
 # PDF -> report generation
-fpdf2==2.7.9
+fpdf==1.7.2
 
 # UI / Charts
 # using streamlit's st.bar_chart() so no matplotlib
@@ -15,4 +15,5 @@ fpdf2==2.7.9
 # Hugging Face client
 huggingface-hub==0.24.6
 requests==2.32.3
+
 
