@@ -2,10 +2,7 @@
 import os
 import re
 import io
-import time
 import base64
-import threading
-from functools import partial
 from typing import Optional, Tuple, Dict, Any, List
 
 import pandas as pd
@@ -21,29 +18,43 @@ import requests
 from concurrent.futures import ThreadPoolExecutor
 
 # -------------------- Config / ENV --------------------
-HF_API_KEY = os.getenv("HF_API_KEY")           # for remote Mistral inference (optional)
-LANGFLOW_URL = os.getenv("LANGFLOW_URL")      # e.g. http://localhost:8080/execute (optional)
-DEFAULT_MODEL = "flan-t5-base"                # local fallback model
-REMOTE_MISTRAL_ID = "mistral-inference-model-id"  # replace with actual HF model id if using remote
+HF_API_KEY = os.getenv("HF_API_KEY")
+LANGFLOW_URL = os.getenv("LANGFLOW_URL")
+DEFAULT_MODEL = "flan-t5-base"
+REMOTE_MISTRAL_ID = "mistral-inference-model-id"
 
-# ThreadPool for background tasks (keeps UI responsive while working)
 executor = ThreadPoolExecutor(max_workers=2)
 
 # -------------------- Streamlit Page Config --------------------
 st.set_page_config(page_title="SpendWise — Refactored", layout="wide")
 
+# 🔹 Set background image
+def set_background(url: str):
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background: url("{url}");
+            background-size: cover;
+            background-attachment: fixed;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+set_background("https://wallpaperaccess.com/full/3457552.jpg")
+
 st.title("📊 SpendWise — Refactored: Mistral + FLAN + Langflow-ready")
 
 # -------------------- UTIL: PDF Parsing --------------------
 def parse_pdf_bytes(file_bytes: bytes) -> str:
-    """Return extracted text from uploaded pdf bytes using pdfplumber."""
     with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
         pages = []
         for p in pdf.pages:
             text = p.extract_text() or ""
             pages.append(text)
     return "\n".join(pages)
-
 
 # -------------------- UTIL: Transaction Extraction --------------------
 DEFAULT_REGEX = re.compile(
@@ -52,18 +63,12 @@ DEFAULT_REGEX = re.compile(
 )
 
 def extract_transactions(text: str, regex: Optional[re.Pattern] = None) -> pd.DataFrame:
-    """Extract transactions from text. Returns DataFrame with standardized columns."""
     if regex is None:
         regex = DEFAULT_REGEX
-
     matches = regex.findall(text)
     transactions = []
     for ttype, amount, party, date in matches:
-        try:
-            parsed_date = pd.to_datetime(date, format="%b %d, %Y", errors="coerce")
-        except Exception:
-            parsed_date = pd.to_datetime(date, errors="coerce")
-
+        parsed_date = pd.to_datetime(date, errors="coerce")
         transactions.append({
             "Date": parsed_date,
             "Type": normalize_type(ttype),
@@ -71,7 +76,6 @@ def extract_transactions(text: str, regex: Optional[re.Pattern] = None) -> pd.Da
             "Party": party.strip() if party else "Self",
             "RawDate": date
         })
-
     df = pd.DataFrame(transactions)
     if df.empty:
         return df
@@ -89,24 +93,12 @@ def normalize_type(t):
 
 # -------------------- CATEGORIZATION --------------------
 BROAD_CATEGORIES = {
-    "amazon": "Shopping",
-    "flipkart": "Shopping",
-    "swiggy": "Food",
-    "zomato": "Food",
-    "apollo": "Medical",
-    "pharmacy": "Medical",
-    "hospital": "Medical",
-    "uber": "Transport",
-    "ola": "Transport",
-    "fuel": "Transport",
-    "grocery": "Groceries",
-    "dmart": "Groceries",
-    "reliance": "Groceries",
-    "rent": "Rent",
-    "insurance": "Insurance",
-    "phonepe": "Payments",
-    "paytm": "Payments",
-    "google": "Payments",
+    "amazon": "Shopping", "flipkart": "Shopping", "swiggy": "Food",
+    "zomato": "Food", "apollo": "Medical", "pharmacy": "Medical",
+    "hospital": "Medical", "uber": "Transport", "ola": "Transport",
+    "fuel": "Transport", "grocery": "Groceries", "dmart": "Groceries",
+    "reliance": "Groceries", "rent": "Rent", "insurance": "Insurance",
+    "phonepe": "Payments", "paytm": "Payments", "google": "Payments",
     "gpay": "Payments",
 }
 
@@ -118,7 +110,6 @@ DETAILED_MAPPING = {
     "swiggy limited": "Food Delivery",
     "rollbaby": "Food & Dining",
     "phonepe": "Telecom & Recharge",
-    # Extend with more
 }
 
 def map_category(party: str) -> str:
@@ -137,17 +128,15 @@ def categorize_df(df: pd.DataFrame) -> pd.DataFrame:
     df["Category"] = df["Party"].apply(map_category)
     return df
 
-# -------------------- MODEL LOADING (cached) --------------------
+# -------------------- MODEL LOADING --------------------
 @st.cache_resource(show_spinner=False)
 def load_local_flan(model_name: str = DEFAULT_MODEL) -> Tuple[Any, Any]:
-    """Load local flan model and tokenizer (cached)."""
     tok = AutoTokenizer.from_pretrained(f"google/{model_name}")
     model = AutoModelForSeq2SeqLM.from_pretrained(f"google/{model_name}")
     return tok, model
 
-# -------------------- REMOTE INFERENCE (Hugging Face Inference) --------------------
+# -------------------- REMOTE INFERENCE --------------------
 def hf_remote_infer(model_id: str, prompt: str, max_tokens: int = 512) -> str:
-    """Call HF Inference API (synchronous). Requires HF_API_KEY env var."""
     if not HF_API_KEY:
         raise RuntimeError("HF_API_KEY not set for remote inference.")
     url = f"https://api-inference.huggingface.co/models/{model_id}"
@@ -156,38 +145,16 @@ def hf_remote_infer(model_id: str, prompt: str, max_tokens: int = 512) -> str:
     resp = requests.post(url, headers=headers, json=payload, timeout=120)
     resp.raise_for_status()
     output = resp.json()
-    # Many HF text models return [{"generated_text": "..."}]
     if isinstance(output, list) and "generated_text" in output[0]:
         return output[0]["generated_text"]
-    # Some return text directly
     if isinstance(output, dict) and "generated_text" in output:
         return output["generated_text"]
-    # Fallback: try string
     if isinstance(output, str):
         return output
-    # If huggingface returns tokens or unusual format:
     return str(output)
-
-# -------------------- LANGFLOW INTEGRATION (if available) --------------------
-def call_langflow(flow_name: str, inputs: Dict[str, Any]) -> Dict[str, Any]:
-    """Call a Langflow REST endpoint if LANGFLOW_URL is set.
-    Expects the Langflow server to expose an execute endpoint that accepts JSON payload:
-    { "flow": "<flow_name_or_json>", "inputs": {..} }
-    """
-    if not LANGFLOW_URL:
-        raise RuntimeError("LANGFLOW_URL not configured.")
-    payload = {"flow": flow_name, "inputs": inputs}
-    resp = requests.post(LANGFLOW_URL, json=payload, timeout=120)
-    resp.raise_for_status()
-    return resp.json()
 
 # -------------------- PIPELINE (3-step) --------------------
 def build_prompts(df: pd.DataFrame, question: str) -> Dict[str, str]:
-    """Create three prompts:
-      - summary_prompt: top-line numbers + monthly table
-      - waste_prompt: detect recurring/wasteful spends
-      - advice_prompt: actionable steps + address user question
-    """
     income = df[df.Type == "Received"].Amount.sum()
     expense = df[df.Type == "Paid"].Amount.sum()
     net = income - expense
@@ -208,81 +175,49 @@ Monthly breakdown:
 Top spending categories:
 {cat_summary.to_string()}
 
-Answer concisely (2-3 short bullets) summarizing the user's financial state."""
-    waste_prompt = f"""Given the transactions below, identify up to 5 wasteful or recurring expenses (with approximate monthly cost) and explain why they might be optimized. Provide concise bullets.
+Give 2–3 short bullets summarizing financial state."""
+    waste_prompt = f"""Given these transactions, identify up to 5 wasteful or recurring expenses (with approximate monthly cost) and why they might be optimized:
 
-Transactions (showing sample top rows):
-{df.head(30).to_string(index=False)}
-
-Focus on subscriptions, frequent food delivery, or transport pickups."""
+{df.head(30).to_string(index=False)}"""
     advice_prompt = f"""User Question: {question}
 
-Based on the summary and wasteful spending insights, provide 3 personalized, actionable recommendations for budgeting, saving, and quick wins. Include one suggestion for automating savings and one for reducing recurring charges."""
+Based on the above, give 3 actionable recommendations for saving and budgeting (include one automation tip and one recurring cost reduction)."""
+
     return {"summary": summary_prompt, "waste": waste_prompt, "advice": advice_prompt}
 
 def run_pipeline_with_local(df: pd.DataFrame, question: str, tokenizer, model, max_new_tokens=256) -> str:
-    """Run the 3-step pipeline locally using the provided tokenizer+model."""
     prompts = build_prompts(df, question)
-    all_outputs = []
-    for name in ["summary", "waste", "advice"]:
-        inputs = tokenizer(prompts[name], return_tensors="pt", truncation=True)
-        outputs = model.generate(**inputs, max_new_tokens=max_new_tokens)
-        decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
-        all_outputs.append(f"--- {name.upper()} ---\n{decoded}\n")
-    return "\n".join(all_outputs)
+    outputs = []
+    for name, prompt in prompts.items():
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True)
+        result = model.generate(**inputs, max_new_tokens=max_new_tokens)
+        decoded = tokenizer.decode(result[0], skip_special_tokens=True)
+        outputs.append(f"--- {name.upper()} ---\n{decoded}\n")
+    return "\n".join(outputs)
 
 def run_pipeline_with_remote(df: pd.DataFrame, question: str, model_id: str) -> str:
-    """Run pipeline by calling remote HF inference for each prompt."""
     prompts = build_prompts(df, question)
-    all_outputs = []
-    for name in ["summary", "waste", "advice"]:
-        out = hf_remote_infer(model_id, prompts[name], max_tokens=512)
-        all_outputs.append(f"--- {name.upper()} ---\n{out}\n")
-    return "\n".join(all_outputs)
+    outputs = []
+    for name, prompt in prompts.items():
+        out = hf_remote_infer(model_id, prompt, max_tokens=512)
+        outputs.append(f"--- {name.upper()} ---\n{out}\n")
+    return "\n".join(outputs)
 
-def run_pipeline_with_langflow(flow_name: str, df: pd.DataFrame, question: str) -> str:
-    """Call Langflow to execute a saved flow. Returns flow outputs combined."""
-    inputs = {
-        "transactions": df.to_dict(orient="records"),
-        "question": question
-    }
-    resp = call_langflow(flow_name, inputs)
-    # Expecting resp to be dict with keys like 'summary','waste','advice'
-    parts = []
-    for k in ("summary", "waste", "advice"):
-        if k in resp:
-            parts.append(f"--- {k.upper()} ---\n{resp[k]}\n")
-    return "\n".join(parts)
+# -------------------- LANGFLOW (unified) --------------------
 def get_spendwise_advice(transactions: str, question: str) -> str:
-    """
-    Call the specific Langflow SpendWise flow directly and return the AI's advice.
-    """
     if not LANGFLOW_URL:
         raise RuntimeError("LANGFLOW_URL not configured in Streamlit secrets.")
-
     payload = {
-        "input_type": "text",
-        "output_type": "chat",
-        "input_value": "",
-        "tweaks": {
-            "Prompt-f7hjD": {
-                "transactions": transactions,
-                "question": question
-            }
-        }
+        "flow": "SpendWise",
+        "inputs": {"transactions": transactions, "question": question}
     }
-
     resp = requests.post(LANGFLOW_URL, json=payload, timeout=120)
     resp.raise_for_status()
-    data = resp.json()
-    return data["outputs"][0]["outputs"][0]["data"]["text"]
+    return resp.json().get("advice", "No advice returned.")
 
 # -------------------- REPORT (PDF) --------------------
 def create_pdf_report(text: str, df: pd.DataFrame) -> bytes:
-    """Create a PDF with the advice and charts embedded (returns bytes)."""
-    # Create charts to images in-memory
     imgs = []
-    # Monthly bar chart
     monthly = df.groupby(["Month", "Type"]).Amount.sum().unstack(fill_value=0)
     if not monthly.empty:
         fig, ax = plt.subplots(figsize=(6, 3))
@@ -295,8 +230,6 @@ def create_pdf_report(text: str, df: pd.DataFrame) -> bytes:
         plt.close(fig)
         buf.seek(0)
         imgs.append(buf.read())
-
-    # Category chart
     cats = df[df.Type == "Paid"].groupby("Category").Amount.sum().sort_values(ascending=False).head(10)
     if not cats.empty:
         fig, ax = plt.subplots(figsize=(6, 3))
@@ -309,8 +242,6 @@ def create_pdf_report(text: str, df: pd.DataFrame) -> bytes:
         plt.close(fig)
         buf.seek(0)
         imgs.append(buf.read())
-
-    # Build PDF
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
@@ -319,14 +250,13 @@ def create_pdf_report(text: str, df: pd.DataFrame) -> bytes:
     for line in text.splitlines():
         pdf.multi_cell(0, 6, line)
     pdf.ln(4)
-    for img_bytes in imgs:
+    for i, img_bytes in enumerate(imgs):
         pdf.add_page()
-        img_path = "/tmp/tmp_chart.png"
+        img_path = f"/tmp/tmp_chart_{i}.png"
         with open(img_path, "wb") as f:
             f.write(img_bytes)
-        # Fit image to page with margins
         pdf.image(img_path, x=10, y=20, w=190)
-    return pdf.output(dest="S").encode("latin-1")
+    return pdf.output(dest="S").encode("utf-8")
 
 # -------------------- UI / App --------------------
 def main():
@@ -336,7 +266,6 @@ def main():
     st.sidebar.markdown("Set HF_API_KEY and LANGFLOW_URL as environment variables for remote features.")
 
     uploaded = st.file_uploader("Upload bank / UPI statement (PDF)", type=["pdf"])
-    raw_text = None
     df = pd.DataFrame()
 
     if uploaded:
@@ -363,27 +292,21 @@ def main():
 
         question = st.text_area("Ask a financial question:", "Where can I cut spending or save more?")
 
-        # Action button triggers pipeline in background thread (but we wait with spinner)
         if st.button("Generate AI Advice"):
             st.info("Running pipeline... this may take 10-60s depending on model choice.")
             future = None
 
             if use_langflow and LANGFLOW_URL:
-                # Build transactions string for Langflow
                 transactions_text = "; ".join(
-                f"{row['Type']} ₹{row['Amount']} to {row['Party']} on {row['Date'].strftime('%Y-%m-%d')}"
-                for _, row in df.iterrows()
+                    f"{row['Type']} ₹{row['Amount']} to {row['Party']} on {row['Date'].strftime('%Y-%m-%d')}"
+                    for _, row in df.iterrows()
                 )
                 future = executor.submit(get_spendwise_advice, transactions_text, question)
-            
             else:
                 if model_choice.startswith("Local"):
-                    # Load cached local flan
-                    tokenizer, model = load_local_flan("flan-t5-base")
-                    # run in thread
+                    tokenizer, model = load_local_flan()
                     future = executor.submit(run_pipeline_with_local, df, question, tokenizer, model, 256)
                 else:
-                    # remote mistral
                     if not HF_API_KEY:
                         st.error("HF_API_KEY not set. Unable to use remote Mistral.")
                         return
@@ -391,16 +314,14 @@ def main():
 
             with st.spinner("Generating advice..."):
                 try:
-                    result_text = future.result(timeout=180)  # block while still showing spinner
+                    result_text = future.result(timeout=180)
                 except Exception as e:
                     st.error(f"Pipeline error: {e}")
                     return
 
-            # display results
             st.markdown("### 📋 Financial Advice (AI)")
             st.write(result_text)
 
-            # Provide download buttons for report and CSV
             pdf_bytes = create_pdf_report(result_text, df)
             st.download_button("Download PDF Report", data=pdf_bytes, file_name="spendwise_report.pdf", mime="application/pdf")
 
@@ -412,4 +333,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
