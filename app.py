@@ -7,7 +7,7 @@ from typing import Optional, Dict
 import pandas as pd
 import numpy as np
 import streamlit as st
-from fpdf2 import FPDF
+from fpdf import FPDF
 
 from huggingface_hub import InferenceClient 
 from concurrent.futures import ThreadPoolExecutor
@@ -263,6 +263,10 @@ def run_pipeline_with_remote(df: pd.DataFrame, question: str, model_id: str) -> 
     return "\n".join(outputs)
 
 # -------------------- REPORT (PDF) --------------------
+def sanitize_text(text: str) -> str:
+    # Replace any non-latin-1 character with '?'
+    return re.sub(r'[^\x00-\xFF]', '?', text)
+
 def create_pdf_report(text: str, df: pd.DataFrame) -> bytes:
     pdf = FPDF()
     pdf.add_page()
@@ -271,9 +275,11 @@ def create_pdf_report(text: str, df: pd.DataFrame) -> bytes:
     pdf.ln(2)
 
     # 🔹 Sanitize advice text to avoid Unicode errors (₹, emojis, etc.)
-    safe_text = text.encode("latin-1", "replace").decode("latin-1")
+    
+    safe_text = sanitize_text(text)
     for line in safe_text.splitlines():
         pdf.multi_cell(0, 6, line)
+
 
     return pdf.output(dest="S").encode("latin-1", "replace")
 
@@ -327,6 +333,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
