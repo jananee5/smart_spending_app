@@ -1,4 +1,4 @@
-# Core
+'''# Core
 streamlit==1.38.0
 pandas==2.2.2
 numpy==2.1.1
@@ -15,5 +15,22 @@ fpdf==1.7.2
 # Hugging Face client
 huggingface-hub==0.24.6
 requests==2.32.3
+'''
+# Core
+streamlit==1.37.0
+pandas==2.2.2
+numpy==1.26.4
+
+# PDF handling (pure-Python)
+pypdf==3.16.0
+fpdf==1.7.2
+
+# Charts
+matplotlib==3.9.2
+
+# Hugging Face (client for remote inference)
+huggingface-hub>=0.13.4
+requests==2.32.3
+
 
 
