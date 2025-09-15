@@ -36,12 +36,21 @@ def set_background(url: str):
             background-size: cover;
             background-attachment: fixed;
         }}
+        /* Add white overlay with 80% transparency */
+        .stApp::before {{
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: -1;
+        }}
         </style>
         """,
         unsafe_allow_html=True
     )
-
-set_background("https://wallpaperaccess.com/full/3457552.jpg")
 
 st.title("📊 SpendWise — Smart UPI Analyzer")
 
@@ -308,5 +317,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
