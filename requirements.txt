@@ -1,16 +1,12 @@
 # Core
-streamlit==1.37.0
+streamlit==1.38.0
 pandas==2.2.2
-numpy==1.26.4
+numpy==2.1.1
 
 # PDF handling
 pdfplumber==0.11.0
 fpdf==1.7.2
 
-# Charts
-matplotlib==3.9.2
-
-# Hugging Face API client
+# Hugging Face lightweight client
 huggingface-hub==0.24.6
 requests==2.32.3
-
