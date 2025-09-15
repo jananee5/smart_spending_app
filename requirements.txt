@@ -1,11 +1,16 @@
-streamlit
-pdfplumber
+streamlit>=1.20
 pandas
+pdfplumber
 fpdf
-transformers
-torch
+transformers>=4.30
+torch  
+torch-cpu #depending on runner
+matplotlib
+requests
+
 accelerate
 langchain
 langchain-core
 langchain-huggingface
+
 
