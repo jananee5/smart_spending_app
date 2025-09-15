@@ -253,6 +253,29 @@ def run_pipeline_with_langflow(flow_name: str, df: pd.DataFrame, question: str) 
         if k in resp:
             parts.append(f"--- {k.upper()} ---\n{resp[k]}\n")
     return "\n".join(parts)
+def get_spendwise_advice(transactions: str, question: str) -> str:
+    """
+    Call the specific Langflow SpendWise flow directly and return the AI's advice.
+    """
+    if not LANGFLOW_URL:
+        raise RuntimeError("LANGFLOW_URL not configured in Streamlit secrets.")
+
+    payload = {
+        "input_type": "text",
+        "output_type": "chat",
+        "input_value": "",
+        "tweaks": {
+            "Prompt-f7hjD": {
+                "transactions": transactions,
+                "question": question
+            }
+        }
+    }
+
+    resp = requests.post(LANGFLOW_URL, json=payload, timeout=120)
+    resp.raise_for_status()
+    data = resp.json()
+    return data["outputs"][0]["outputs"][0]["data"]["text"]
 
 # -------------------- REPORT (PDF) --------------------
 def create_pdf_report(text: str, df: pd.DataFrame) -> bytes:
@@ -346,8 +369,13 @@ def main():
             future = None
 
             if use_langflow and LANGFLOW_URL:
-                # call langflow
-                future = executor.submit(run_pipeline_with_langflow, "spendwise_flow", df, question)
+                # Build transactions string for Langflow
+                transactions_text = "; ".join(
+                f"{row['Type']} ₹{row['Amount']} to {row['Party']} on {row['Date'].strftime('%Y-%m-%d')}"
+                for _, row in df.iterrows()
+                )
+                future = executor.submit(get_spendwise_advice, transactions_text, question)
+            
             else:
                 if model_choice.startswith("Local"):
                     # Load cached local flan
@@ -384,3 +412,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
