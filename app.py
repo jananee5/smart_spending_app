@@ -7,7 +7,6 @@ from typing import Optional, Dict
 import pandas as pd
 import numpy as np
 import streamlit as st
-import pdfplumber
 from fpdf import FPDF
 
 from huggingface_hub import InferenceClient
@@ -46,9 +45,20 @@ set_background("https://wallpaperaccess.com/full/3457552.jpg")
 st.title("📊 SpendWise — Smart UPI Analyzer")
 
 # -------------------- UTIL: PDF Parsing --------------------
+from pypdf import PdfReader
+
 def parse_pdf_bytes(file_bytes: bytes) -> str:
-    with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
-        return "\n".join([p.extract_text() or "" for p in pdf.pages])
+    """
+    Extract text from PDF bytes using pypdf (pure Python).
+    Returns concatenated page text.
+    """
+    reader = PdfReader(io.BytesIO(file_bytes))
+    pages = []
+    for page in reader.pages:
+        text = page.extract_text()
+        if text:
+            pages.append(text)
+    return "\n".join(pages)
 
 # -------------------- UTIL: Transaction Extraction --------------------
 DEFAULT_REGEX = re.compile(
@@ -233,3 +243,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
