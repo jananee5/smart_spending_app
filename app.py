@@ -409,11 +409,59 @@ def create_pdf_report(text: str, df: pd.DataFrame) -> bytes:
 # -------------------- UI / App --------------------
 def main():
     st.sidebar.header("Settings")
-    # Keep model UI simple: single remote option (we fallback automatically)
-    st.sidebar.markdown("Model (remote inference). If HF token is not set or model not hosted, app will fallback to deterministic advice.")
-    model_choice = st.sidebar.radio("Choose Model:", ("Remote HuggingFace (fast)",))
-    st.sidebar.markdown("Set HF token in Streamlit Secrets as `[huggingface] token = \"hf_xxx\"`")
 
+    # Show whether HF token is loaded (do NOT display the token)
+    hf_token_present = bool(HF_API_KEY)
+    if hf_token_present:
+        st.sidebar.success("Hugging Face token: ✅ set (from Streamlit secrets or env)")
+    else:
+        st.sidebar.warning("Hugging Face token: ❌ not set")
+
+    st.sidebar.markdown("---")
+
+    # Small list of hosted/testable models for the dropdown (you can change these)
+    model_options = [
+        "gpt2",                  # very small, usually available
+        "google/flan-t5-small",  # small FLAN variant (test)
+        "facebook/bart-large-cnn" # summarization model (test)
+    ]
+    selected_model = st.sidebar.selectbox("Choose model (hosted)", model_options, index=0)
+
+    if not hf_token_present:
+        st.sidebar.markdown(
+            "Set HF token in Streamlit Secrets (Manage app → Settings → Secrets) as:\n\n"
+            "```toml\n[huggingface]\ntoken = \"hf_xxx\"\n```"
+        )
+    else:
+        st.sidebar.markdown("Model will use your Hugging Face token for inference (keeps the token secret).")
+
+    # Quick connectivity test button
+    if st.sidebar.button("Test model connectivity"):
+        st.sidebar.info("Testing model... (this runs a small inference call)")
+        try:
+            test_client = InferenceClient(token=HF_API_KEY) if HF_API_KEY else None
+            if not test_client:
+                st.sidebar.error("No HF token available; cannot test.")
+            else:
+                out = test_client.text_generation(model=selected_model, prompt="Hello!", max_new_tokens=8)
+                # Normalize output to string
+                if isinstance(out, str):
+                    txt = out
+                elif isinstance(out, list) and len(out) > 0 and isinstance(out[0], dict):
+                    txt = out[0].get("generated_text") or out[0].get("text") or str(out[0])
+                else:
+                    txt = str(out)
+                st.sidebar.success("Test OK — model responded")
+                st.sidebar.write(txt[:300])
+        except Exception as e:
+            st.sidebar.error(f"Model test failed: {type(e).__name__}: {str(e)[:200]}")
+
+    # Store selection so other parts of app can use it
+    st.session_state["selected_model"] = selected_model
+    st.sidebar.markdown("---")
+    st.sidebar.caption("If the remote model fails, app will show fallback (deterministic) advice.")
+
+    # --- Main UI ---
     uploaded = st.file_uploader("Upload bank / UPI statement (PDF)", type=["pdf"])
     df = pd.DataFrame()
 
@@ -433,7 +481,6 @@ def main():
 
         with st.expander("Monthly Summary Chart"):
             monthly = df.groupby(["Month", "Type"]).Amount.sum().unstack(fill_value=0)
-            # st.bar_chart accepts DataFrame/Series
             st.bar_chart(monthly)
 
         with st.expander("Top Spending Categories"):
@@ -448,8 +495,9 @@ def main():
 
         if st.button("Generate AI Advice"):
             st.info("Running pipeline... this may take a few seconds.")
-            # Run inference (or fallback) synchronously here for simplicity
-            result_text = run_pipeline_with_remote(df, question, REMOTE_MISTRAL_ID)
+            # Use selected model if available, otherwise fallback to REMOTE_MISTRAL_ID
+            model_to_use = st.session_state.get("selected_model", REMOTE_MISTRAL_ID)
+            result_text = run_pipeline_with_remote(df, question, model_to_use)
 
             st.markdown("### 📋 Financial Advice (AI)")
             st.write(result_text)
@@ -463,5 +511,7 @@ def main():
     else:
         st.info("Upload a UPI or bank statement PDF to begin.")
 
+
 if __name__ == "__main__":
     main()
+
