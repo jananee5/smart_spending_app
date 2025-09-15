@@ -2,15 +2,22 @@
 import os
 import re
 import io
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 
 import pandas as pd
 import numpy as np
 import streamlit as st
 from fpdf import FPDF
 
-from huggingface_hub import InferenceClient 
+# Lightweight, pure-python PDF reader
+from pypdf import PdfReader
+
+# HF client (lightweight)
+from huggingface_hub import InferenceClient
+from huggingface_hub.utils._errors import HfHubHTTPError
+
 from concurrent.futures import ThreadPoolExecutor
+import traceback
 
 # -------------------- Config / ENV --------------------
 HF_API_KEY = None
@@ -18,10 +25,18 @@ try:
     HF_API_KEY = st.secrets.get("huggingface", {}).get("token", os.getenv("HF_API_KEY"))
 except Exception:
     HF_API_KEY = os.getenv("HF_API_KEY")
+
+# Model choices (commented options kept for evaluator)
+# Note: Some models on HF are not hosted by the free Inference API and will return 404.
+# For reliable demo on Streamlit Cloud, keep a small hosted model or rely on fallback.
 #REMOTE_MISTRAL_ID = "google/flan-t5-base"
 #REMOTE_MISTRAL_ID = "tiiuae/falcon-7b-instruct"
 #REMOTE_MISTRAL_ID = "mistralai/Mistral-7B-Instruct-v0.2"
+# A safe default: choose a small model or use fallback if inference fails.
 REMOTE_MISTRAL_ID = "gpt2"
+
+# Create HF client only if token is present
+client = InferenceClient(token=HF_API_KEY) if HF_API_KEY else None
 
 executor = ThreadPoolExecutor(max_workers=2)
 
@@ -37,7 +52,7 @@ def set_background(url: str):
             background-size: cover;
             background-attachment: fixed;
         }}
-        /* Add white overlay with 80% transparency */
+        /* Semi-opaque overlay so text remains readable over busy images */
         .stApp::before {{
             content: "";
             position: absolute;
@@ -45,20 +60,22 @@ def set_background(url: str):
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.85); /* adjust opacity if needed */
             z-index: -1;
         }}
         </style>
         """,
         unsafe_allow_html=True
     )
-set_background("https://static.vecteezy.com/system/resources/previews/019/154/472/large_2x/inflation-illustration-set-characters-buying-food-in-supermarket-and-worries-about-groceries-rising-price-vector.jpg")
+
+# Use the Vecteezy image you provided
+set_background(
+    "https://static.vecteezy.com/system/resources/previews/019/154/472/large_2x/inflation-illustration-set-characters-buying-food-in-supermarket-and-worries-about-groceries-rising-price-vector.jpg"
+)
 
 st.title("📊 SpendWise — Smart UPI Analyzer")
 
 # -------------------- UTIL: PDF Parsing --------------------
-from pypdf import PdfReader
-
 def parse_pdf_bytes(file_bytes: bytes) -> str:
     """
     Extract text from PDF bytes using pypdf (pure Python).
@@ -67,17 +84,20 @@ def parse_pdf_bytes(file_bytes: bytes) -> str:
     reader = PdfReader(io.BytesIO(file_bytes))
     pages = []
     for page in reader.pages:
-        text = page.extract_text()
+        try:
+            text = page.extract_text()
+        except Exception:
+            text = None
         if text:
             pages.append(text)
     return "\n".join(pages)
 
 # -------------------- UTIL: Transaction Extraction --------------------
+# Looser regex to capture more merchant formats, with date at the end
 DEFAULT_REGEX = re.compile(
-    r"(Received|Paid|Credited|Debited|Deposit|Withdrawal)\s*[₹]?\s*([\d,]+\.\d{2}).*?(?:to|from)?\s*([A-Za-z0-9&\-\s\.]+)?\s*\n?.*?([A-Za-z]{3}\s+\d{1,2},\s+\d{4})",
+    r"(Received|Paid|Credited|Debited|Deposit|Withdrawal)\s*[₹]?\s*([\d,]+\.\d{2}).*?(?:to|from)?\s*([A-Za-z0-9@&\-\._\/\s]+)?\s*\n?.*?([A-Za-z]{3}\s+\d{1,2},\s+\d{4})",
     re.DOTALL
 )
-
 
 def extract_transactions(text: str, regex: Optional[re.Pattern] = None) -> pd.DataFrame:
     regex = regex or DEFAULT_REGEX
@@ -88,8 +108,8 @@ def extract_transactions(text: str, regex: Optional[re.Pattern] = None) -> pd.Da
         transactions.append({
             "Date": parsed_date,
             "Type": normalize_type(ttype),
-            "Amount": float(amount.replace(",", "")),
-            "Party": party.strip() if party else "Self",
+            "Amount": safe_float(amount),
+            "Party": (party.strip() if party else "Self"),
             "RawDate": date
         })
     df = pd.DataFrame(transactions)
@@ -99,8 +119,14 @@ def extract_transactions(text: str, regex: Optional[re.Pattern] = None) -> pd.Da
     df["Month"] = df["Date"].dt.to_period("M").astype(str)
     return df
 
+def safe_float(val: str) -> float:
+    try:
+        return float(val.replace(",", ""))
+    except Exception:
+        return 0.0
+
 def normalize_type(t):
-    t = t.lower()
+    t = (t or "").lower()
     if t in ["received", "credited", "deposit"]:
         return "Received"
     if t in ["paid", "debited", "withdrawal"]:
@@ -111,6 +137,7 @@ def normalize_type(t):
 BROAD_CATEGORIES = {
     # Food & Delivery
     "swiggy": "Food Delivery",
+    "swiggy limited": "Food Delivery",
     "zomato": "Food Delivery",
     "zepto": "Groceries",
     "blinkit": "Groceries",
@@ -124,6 +151,7 @@ BROAD_CATEGORIES = {
     "reliance": "Groceries",
     "bigbasket": "Groceries",
     "more supermarket": "Groceries",
+    "big basket": "Groceries",
 
     # Medical & Healthcare
     "apollo": "Medical",
@@ -157,6 +185,7 @@ BROAD_CATEGORIES = {
     "airtel": "Utilities",
     "jio": "Utilities",
     "vodafone": "Utilities",
+    "reliance jio": "Utilities",
 
     # Rent & Loans
     "rent": "Rent",
@@ -180,12 +209,16 @@ BROAD_CATEGORIES = {
     "netflix": "Entertainment",
     "hotstar": "Entertainment",
     "prime video": "Entertainment",
+    "primevideo": "Entertainment",
 }
 
 def map_category(party: str) -> str:
-    name = party.lower()
+    name = (party or "").lower().strip()
 
-    # Match detailed keyword mapping
+    # Normalize common noise words
+    name = re.sub(r'\b(ltd|pvt|private|limited|india|inc|co)\b', '', name)
+
+    # Detailed keyword mapping
     for keyword, category in BROAD_CATEGORIES.items():
         if keyword in name:
             return category
@@ -195,8 +228,12 @@ def map_category(party: str) -> str:
         return "Bank Transfer"
 
     # UPI handle detection
-    if "@ok" in name or "@upi" in name or "@paytm" in name or "@icici" in name or "@sbi" in name:
+    if "@" in name and ("ok" in name or "upi" in name or "paytm" in name or "icici" in name or "sbi" in name):
         return "UPI Payment"
+
+    # If numeric-only party or card txn id -> treat as Other/Banks
+    if re.match(r'^[\d\-\/]+$', name):
+        return "Bank/Other"
 
     # Fallback
     return "Other"
@@ -207,45 +244,94 @@ def categorize_df(df: pd.DataFrame) -> pd.DataFrame:
     df["Category"] = df["Party"].apply(map_category)
     return df
 
-from huggingface_hub import InferenceClient
-from huggingface_hub.utils._errors import HfHubHTTPError
-import traceback
+# -------------------- HELPERS & PIPELINE --------------------
+def sanitize_text(text: str) -> str:
+    """Replace any non-latin-1 character with '?' to keep fpdf happy."""
+    if text is None:
+        return ""
+    return re.sub(r'[^\x00-\xFF]', '?', text)
 
-# create client (ensure HF_API_KEY is defined earlier)
-client = InferenceClient(token=HF_API_KEY)
+def build_prompts(df: pd.DataFrame, question: str) -> Dict[str, str]:
+    income = df[df.Type == "Received"].Amount.sum() if not df.empty else 0.0
+    expense = df[df.Type == "Paid"].Amount.sum() if not df.empty else 0.0
+    net = income - expense
 
+    monthly_summary = pd.DataFrame()
+    cat_summary = pd.Series(dtype=float)
+    try:
+        monthly_summary = df.groupby(["Month", "Type"]).Amount.sum().unstack(fill_value=0).reset_index()
+        cat_summary = df[df.Type == "Paid"].groupby("Category").Amount.sum().sort_values(ascending=False).head(10)
+    except Exception:
+        pass
+
+    summary_prompt = f"""You are a helpful financial assistant.
+Total Income: ₹{income:.2f}
+Total Expenses: ₹{expense:.2f}
+Net Balance: ₹{net:.2f}
+
+Monthly breakdown:
+{monthly_summary.to_string(index=False)}
+
+Top spending categories:
+{cat_summary.to_string()}
+
+Give 2–3 short bullets summarizing financial state."""
+    waste_prompt = f"""Given these transactions, identify up to 5 wasteful or recurring expenses (with approximate monthly cost) and why they might be optimized:
+
+{df.head(30).to_string(index=False)}"""
+    advice_prompt = f"""User Question: {question}
+
+Based on the above, give 3 actionable recommendations for saving and budgeting (include one automation tip and one recurring cost reduction)."""
+
+    return {"summary": summary_prompt, "waste": waste_prompt, "advice": advice_prompt}
+
+# Create HF client only if token exists (safe guard)
+client = InferenceClient(token=HF_API_KEY) if HF_API_KEY else None
+
+def _normalize_hf_output(output: Any) -> str:
+    """Normalize HF client return values to a readable string."""
+    try:
+        if isinstance(output, str):
+            return output
+        if isinstance(output, list) and len(output) > 0:
+            first = output[0]
+            if isinstance(first, dict):
+                return first.get("generated_text") or first.get("text") or str(first)
+            return str(first)
+        if isinstance(output, dict):
+            return output.get("generated_text") or output.get("text") or str(output)
+        return str(output)
+    except Exception:
+        return str(output)
+
+# -------------------- REMOTE INFERENCE (robust with fallback) --------------------
 def hf_remote_infer(model_id: str, prompt: str, max_tokens: int = 512) -> str:
     """
-    Attempts remote inference. On any error, raises the exception up so the caller
-    can decide to fallback. We return the text (string) when successful.
+    Attempts remote inference using the InferenceClient and returns plain string.
+    Raises exceptions to let caller fallback.
     """
-    if not HF_API_KEY:
+    if not HF_API_KEY or client is None:
         raise RuntimeError("HF_API_KEY not set for remote inference.")
     try:
-        # Use text_generation (non-streaming)
         out = client.text_generation(
             model=model_id,
             prompt=prompt,
             max_new_tokens=max_tokens
         )
-        return out
-    except HfHubHTTPError as e:
-        # Hugging Face specific HTTP error (404/403/429/etc.)
-        # Re-raise so the caller can fallback gracefully
+        return _normalize_hf_output(out)
+    except HfHubHTTPError:
+        # re-raise to allow caller to fallback gracefully
         raise
-    except Exception as e:
-        # Any other error (timeouts, network issues)
+    except Exception:
+        # re-raise for caller
         raise
 
 def generate_simple_advice(df: pd.DataFrame, question: str) -> str:
-    """
-    Simple deterministic fallback advice generator using dataframe summaries.
-    This ensures your app works even if remote LLM is unavailable.
-    """
-    income = df[df.Type == "Received"].Amount.sum()
-    expense = df[df.Type == "Paid"].Amount.sum()
+    """Deterministic fallback advice based on numeric summaries."""
+    income = df[df.Type == "Received"].Amount.sum() if not df.empty else 0.0
+    expense = df[df.Type == "Paid"].Amount.sum() if not df.empty else 0.0
     net = income - expense
-    top_cats = df[df.Type == "Paid"].groupby("Category").Amount.sum().sort_values(ascending=False).head(5)
+    top_cats = df[df.Type == "Paid"].groupby("Category").Amount.sum().sort_values(ascending=False).head(5) if not df.empty else pd.Series(dtype=float)
 
     lines = []
     lines.append("Summary (fallback):")
@@ -259,15 +345,14 @@ def generate_simple_advice(df: pd.DataFrame, question: str) -> str:
             lines.append(f"- {cat}: ₹{amt:.2f}")
         lines.append("")
 
-    # Question-aware simple advice
     if "save" in question.lower() or "cut" in question.lower():
         lines.append("Actionable tips (fallback):")
         lines.append("- Reduce spending in top categories shown above by 10–20%.")
         lines.append("- Review subscriptions and recurring payments; cancel unused ones.")
-        lines.append("- Move small savings into a recurring deposit or sweep account.")
+        lines.append("- Automate small monthly transfers to savings.")
     else:
         lines.append("General tips (fallback):")
-        lines.append("- Keep a weekly budget and track daily discretionary spends.")
+        lines.append("- Keep a weekly budget and track discretionary spending.")
         lines.append("- Automate 10% of income to savings if possible.")
 
     return "\n".join(lines)
@@ -278,35 +363,20 @@ def run_pipeline_with_remote(df: pd.DataFrame, question: str, model_id: str) -> 
     """
     prompts = build_prompts(df, question)
     outputs = []
-    # Try-catch per-prompt so partial success is possible (but we fallback to deterministic if any fail)
     try:
         for name, prompt in prompts.items():
             out = hf_remote_infer(model_id, prompt, max_tokens=512)
             outputs.append(f"--- {name.upper()} ---\n{out}\n")
         return "\n".join(outputs)
-    except Exception as e:
-        # Log error server-side (so you can view in Streamlit Cloud logs)
+    except Exception:
+        # Log stacktrace to server logs for debugging
         print("Remote inference failed — falling back to deterministic advice.")
         traceback.print_exc()
-
-        # Return clear user-visible message + fallback advice
         fallback = generate_simple_advice(df, question)
         return (
             "⚠️ Remote model unavailable or returned an error. Showing fallback advice below.\n\n"
             + fallback
         )
-
-
-
-def sanitize_text(text: str) -> str:
-    """
-    Replace any character outside Latin-1 range with a safe ASCII substitute.
-    Keeps basic punctuation and numbers; replaces others with '?' to avoid FPDF errors.
-    """
-    if text is None:
-        return ""
-    # Replace non-latin1 with '?'
-    return re.sub(r'[^\x00-\xFF]', '?', text)
 
 # -------------------- REPORT (PDF) --------------------
 def create_pdf_report(text: str, df: pd.DataFrame) -> bytes:
@@ -336,11 +406,13 @@ def create_pdf_report(text: str, df: pd.DataFrame) -> bytes:
     # Return bytes in latin-1 to satisfy fpdf internals
     return pdf.output(dest="S").encode("latin-1", "replace")
 
-
 # -------------------- UI / App --------------------
 def main():
     st.sidebar.header("Settings")
+    # Keep model UI simple: single remote option (we fallback automatically)
+    st.sidebar.markdown("Model (remote inference). If HF token is not set or model not hosted, app will fallback to deterministic advice.")
     model_choice = st.sidebar.radio("Choose Model:", ("Remote HuggingFace (fast)",))
+    st.sidebar.markdown("Set HF token in Streamlit Secrets as `[huggingface] token = \"hf_xxx\"`")
 
     uploaded = st.file_uploader("Upload bank / UPI statement (PDF)", type=["pdf"])
     df = pd.DataFrame()
@@ -361,16 +433,22 @@ def main():
 
         with st.expander("Monthly Summary Chart"):
             monthly = df.groupby(["Month", "Type"]).Amount.sum().unstack(fill_value=0)
+            # st.bar_chart accepts DataFrame/Series
             st.bar_chart(monthly)
 
         with st.expander("Top Spending Categories"):
             cats = df[df.Type == "Paid"].groupby("Category").Amount.sum().sort_values(ascending=False)
             st.bar_chart(cats)
 
+        # show unique parties for debugging
+        if st.sidebar.checkbox("Show parsed merchant names (debug)", value=False):
+            st.sidebar.write(df["Party"].unique().tolist())
+
         question = st.text_area("Ask a financial question:", "Where can I cut spending or save more?")
 
         if st.button("Generate AI Advice"):
             st.info("Running pipeline... this may take a few seconds.")
+            # Run inference (or fallback) synchronously here for simplicity
             result_text = run_pipeline_with_remote(df, question, REMOTE_MISTRAL_ID)
 
             st.markdown("### 📋 Financial Advice (AI)")
@@ -387,14 +465,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
-
-
-
