@@ -207,81 +207,135 @@ def categorize_df(df: pd.DataFrame) -> pd.DataFrame:
     df["Category"] = df["Party"].apply(map_category)
     return df
 
+from huggingface_hub import InferenceClient
+from huggingface_hub.utils._errors import HfHubHTTPError
+import traceback
 
-# -------------------- REMOTE INFERENCE --------------------
+# create client (ensure HF_API_KEY is defined earlier)
 client = InferenceClient(token=HF_API_KEY)
+
 def hf_remote_infer(model_id: str, prompt: str, max_tokens: int = 512) -> str:
+    """
+    Attempts remote inference. On any error, raises the exception up so the caller
+    can decide to fallback. We return the text (string) when successful.
+    """
     if not HF_API_KEY:
         raise RuntimeError("HF_API_KEY not set for remote inference.")
     try:
-        response = client.text_generation(
+        # Use text_generation (non-streaming)
+        out = client.text_generation(
             model=model_id,
             prompt=prompt,
             max_new_tokens=max_tokens
         )
-        return response
+        return out
+    except HfHubHTTPError as e:
+        # Hugging Face specific HTTP error (404/403/429/etc.)
+        # Re-raise so the caller can fallback gracefully
+        raise
     except Exception as e:
-        return f"Error during inference: {e}"
+        # Any other error (timeouts, network issues)
+        raise
 
-
-# -------------------- PIPELINE --------------------
-def build_prompts(df: pd.DataFrame, question: str) -> Dict[str, str]:
+def generate_simple_advice(df: pd.DataFrame, question: str) -> str:
+    """
+    Simple deterministic fallback advice generator using dataframe summaries.
+    This ensures your app works even if remote LLM is unavailable.
+    """
     income = df[df.Type == "Received"].Amount.sum()
     expense = df[df.Type == "Paid"].Amount.sum()
     net = income - expense
+    top_cats = df[df.Type == "Paid"].groupby("Category").Amount.sum().sort_values(ascending=False).head(5)
 
-    monthly_summary = df.groupby(["Month", "Type"]).Amount.sum().unstack(fill_value=0).reset_index()
-    cat_summary = df[df.Type == "Paid"].groupby("Category").Amount.sum().sort_values(ascending=False).head(10)
+    lines = []
+    lines.append("Summary (fallback):")
+    lines.append(f"Total Income: ₹{income:.2f}")
+    lines.append(f"Total Expenses: ₹{expense:.2f}")
+    lines.append(f"Net Balance: ₹{net:.2f}\n")
 
-    summary_prompt = f"""You are a helpful financial assistant.
-Total Income: ₹{income:.2f}
-Total Expenses: ₹{expense:.2f}
-Net Balance: ₹{net:.2f}
+    if not top_cats.empty:
+        lines.append("Top spending categories (fallback):")
+        for cat, amt in top_cats.items():
+            lines.append(f"- {cat}: ₹{amt:.2f}")
+        lines.append("")
 
-Monthly breakdown:
-{monthly_summary.to_string(index=False)}
+    # Question-aware simple advice
+    if "save" in question.lower() or "cut" in question.lower():
+        lines.append("Actionable tips (fallback):")
+        lines.append("- Reduce spending in top categories shown above by 10–20%.")
+        lines.append("- Review subscriptions and recurring payments; cancel unused ones.")
+        lines.append("- Move small savings into a recurring deposit or sweep account.")
+    else:
+        lines.append("General tips (fallback):")
+        lines.append("- Keep a weekly budget and track daily discretionary spends.")
+        lines.append("- Automate 10% of income to savings if possible.")
 
-Top spending categories:
-{cat_summary.to_string()}
-
-Give 2–3 short bullets summarizing financial state."""
-    waste_prompt = f"""Given these transactions, identify up to 5 wasteful or recurring expenses (with approximate monthly cost) and why they might be optimized:
-
-{df.head(30).to_string(index=False)}"""
-    advice_prompt = f"""User Question: {question}
-
-Based on the above, give 3 actionable recommendations for saving and budgeting (include one automation tip and one recurring cost reduction)."""
-
-    return {"summary": summary_prompt, "waste": waste_prompt, "advice": advice_prompt}
+    return "\n".join(lines)
 
 def run_pipeline_with_remote(df: pd.DataFrame, question: str, model_id: str) -> str:
+    """
+    Try remote LLM; if it errors (404/403/etc.), fall back to deterministic advice.
+    """
     prompts = build_prompts(df, question)
     outputs = []
-    for name, prompt in prompts.items():
-        out = hf_remote_infer(model_id, prompt, max_tokens=512)
-        outputs.append(f"--- {name.upper()} ---\n{out}\n")
-    return "\n".join(outputs)
+    # Try-catch per-prompt so partial success is possible (but we fallback to deterministic if any fail)
+    try:
+        for name, prompt in prompts.items():
+            out = hf_remote_infer(model_id, prompt, max_tokens=512)
+            outputs.append(f"--- {name.upper()} ---\n{out}\n")
+        return "\n".join(outputs)
+    except Exception as e:
+        # Log error server-side (so you can view in Streamlit Cloud logs)
+        print("Remote inference failed — falling back to deterministic advice.")
+        traceback.print_exc()
 
-# -------------------- REPORT (PDF) --------------------
+        # Return clear user-visible message + fallback advice
+        fallback = generate_simple_advice(df, question)
+        return (
+            "⚠️ Remote model unavailable or returned an error. Showing fallback advice below.\n\n"
+            + fallback
+        )
+
+
+
 def sanitize_text(text: str) -> str:
-    # Replace any non-latin-1 character with '?'
+    """
+    Replace any character outside Latin-1 range with a safe ASCII substitute.
+    Keeps basic punctuation and numbers; replaces others with '?' to avoid FPDF errors.
+    """
+    if text is None:
+        return ""
+    # Replace non-latin1 with '?'
     return re.sub(r'[^\x00-\xFF]', '?', text)
 
+# -------------------- REPORT (PDF) --------------------
 def create_pdf_report(text: str, df: pd.DataFrame) -> bytes:
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 7, "SpendWise — Personalized Financial Advice", 0, 1)
+    # sanitize title and header
+    title = sanitize_text("SpendWise - Personalized Financial Advice")
+    pdf.multi_cell(0, 7, title, 0, 1)
     pdf.ln(2)
 
-    # 🔹 Sanitize advice text to avoid Unicode errors (₹, emojis, etc.)
-    
+    # Optional: include a short summary table (sanitized)
+    try:
+        income = df[df.Type == "Received"].Amount.sum()
+        expense = df[df.Type == "Paid"].Amount.sum()
+        pdf.multi_cell(0, 6, sanitize_text(f"Total Income: ₹{income:.2f}"))
+        pdf.multi_cell(0, 6, sanitize_text(f"Total Expenses: ₹{expense:.2f}"))
+        pdf.ln(2)
+    except Exception:
+        pass
+
+    # Sanitize AI text before writing
     safe_text = sanitize_text(text)
     for line in safe_text.splitlines():
         pdf.multi_cell(0, 6, line)
 
-
+    # Return bytes in latin-1 to satisfy fpdf internals
     return pdf.output(dest="S").encode("latin-1", "replace")
+
 
 # -------------------- UI / App --------------------
 def main():
@@ -333,6 +387,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
