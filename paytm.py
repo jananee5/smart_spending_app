@@ -48,12 +48,13 @@ def set_background(url: str):
     st.markdown(
         f"""
         <style>
+        /* Main app background */
         .stApp {{
             background: url("{url}") no-repeat center center fixed;
             background-size: cover;
             position: relative;
             min-height: 100vh;
-            color: white; /* global font color */
+            color: white;
         }}
         .stApp::before {{
             content: "";
@@ -67,15 +68,38 @@ def set_background(url: str):
             position: relative;
             z-index: 1;
         }}
-        /* Global text color */
-        .stApp, .stApp p, .stApp span, .stApp div {{
-            color: #f5f5f5 !important;  /* light gray for readability */
+
+        /* Sidebar background with gradient */
+        section[data-testid="stSidebar"] {{
+            background: linear-gradient(180deg, #0f2027, #203a43, #2c5364);
+            color: #f1f1f1;
         }}
+
+        /* Sidebar text */
+        section[data-testid="stSidebar"] * {{
+            color: #e0e0e0 !important;
+        }}
+
+        /* Sidebar headers */
+        section[data-testid="stSidebar"] h1, 
+        section[data-testid="stSidebar"] h2, 
+        section[data-testid="stSidebar"] h3 {{
+            color: #00eaff !important; /* neon techy blue */
+            text-shadow: 0px 0px 6px rgba(0,234,255,0.7);
+        }}
+
+        /* Global text */
+        .stApp, .stApp p, .stApp span, .stApp div {{
+            color: #f5f5f5 !important;
+        }}
+
         /* Titles and headers */
         h1, h2, h3, h4, h5, h6 {{
-            color: #ffffff !important;  /* pure white for headers */
+            color: #ffffff !important;
+            text-shadow: 0px 0px 6px rgba(0,0,0,0.6);
         }}
-        /* traffic-light styles */
+
+        /* Traffic-light badge */
         .risk-badge {{
             padding: 12px;
             border-radius: 8px;
@@ -90,10 +114,12 @@ def set_background(url: str):
         unsafe_allow_html=True,
     )
 
+# Call function
 set_background("https://i0.wp.com/picjumbo.com/wp-content/uploads/coins-on-table-finance-budgeting-free-image.jpeg?quality=80&w=600")
 
-
+# Title
 st.title("📊 SpendWise — Cash Flow & UPI Analyzer (Upgraded Visuals)")
+
 
 # -------------------- PDF parsing --------------------
 def parse_pdf_bytes(file_bytes: bytes) -> str:
