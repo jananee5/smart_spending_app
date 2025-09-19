@@ -48,7 +48,6 @@ def set_background(url: str):
     st.markdown(
         f"""
         <style>
-        /* Main app background */
         .stApp {{
             background: url("{url}") no-repeat center center fixed;
             background-size: cover;
@@ -60,7 +59,7 @@ def set_background(url: str):
             content: "";
             position: absolute;
             inset: 0;
-            background: rgba(0,0,0,0.45); /* dark overlay */
+            background: rgba(0,0,0,0.65); /* darker overlay */
             z-index: 0;
             pointer-events: none;
         }}
@@ -69,34 +68,9 @@ def set_background(url: str):
             z-index: 1;
         }}
 
-        /* Sidebar background with gradient */
-        section[data-testid="stSidebar"] {{
-            background: linear-gradient(180deg, #0f2027, #203a43, #2c5364);
-            color: #f1f1f1;
-        }}
-
-        /* Sidebar text */
-        section[data-testid="stSidebar"] * {{
-            color: #e0e0e0 !important;
-        }}
-
-        /* Sidebar headers */
-        section[data-testid="stSidebar"] h1, 
-        section[data-testid="stSidebar"] h2, 
-        section[data-testid="stSidebar"] h3 {{
-            color: #00eaff !important; /* neon techy blue */
-            text-shadow: 0px 0px 6px rgba(0,234,255,0.7);
-        }}
-
-        /* Global text */
-        .stApp, .stApp p, .stApp span, .stApp div {{
-            color: #f5f5f5 !important;
-        }}
-
-        /* Titles and headers */
-        h1, h2, h3, h4, h5, h6 {{
-            color: #ffffff !important;
-            text-shadow: 0px 0px 6px rgba(0,0,0,0.6);
+        /* ✅ Add text-shadow here for readability */
+        h1, h2, h3, h4, h5, h6, p, span, div {{
+            text-shadow: 0px 0px 6px rgba(0,0,0,0.7);
         }}
 
         /* Traffic-light badge */
@@ -113,6 +87,7 @@ def set_background(url: str):
         """,
         unsafe_allow_html=True,
     )
+
 
 # Call function
 set_background("https://i0.wp.com/picjumbo.com/wp-content/uploads/coins-on-table-finance-budgeting-free-image.jpeg?quality=80&w=600")
