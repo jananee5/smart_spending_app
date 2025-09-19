@@ -81,7 +81,7 @@ def set_background(url: str):
         unsafe_allow_html=True,
     )
 
-set_background("https://static.vecteezy.com/system/resources/previews/019/154/472/large_2x/inflation-illustration-set-characters-buying-food-in-supermarket-and-worries-about-groceries-rising-price-vector.jpg")
+set_background("https://i0.wp.com/picjumbo.com/wp-content/uploads/coins-on-table-finance-budgeting-free-image.jpeg?quality=80&w=600")
 
 st.title("📊 SpendWise — Cash Flow & UPI Analyzer (Upgraded Visuals)")
 
