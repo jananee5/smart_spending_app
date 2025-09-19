@@ -48,6 +48,7 @@ def set_background(url: str):
     st.markdown(
         f"""
         <style>
+        /* Main app background */
         .stApp {{
             background: url("{url}") no-repeat center center fixed;
             background-size: cover;
@@ -59,7 +60,7 @@ def set_background(url: str):
             content: "";
             position: absolute;
             inset: 0;
-            background: rgba(0,0,0,0.65); /* darker overlay */
+            background: rgba(0,0,0,0.6); /* stronger dark overlay */
             z-index: 0;
             pointer-events: none;
         }}
@@ -68,9 +69,39 @@ def set_background(url: str):
             z-index: 1;
         }}
 
-        /* ✅ Add text-shadow here for readability */
-        h1, h2, h3, h4, h5, h6, p, span, div {{
-            text-shadow: 0px 0px 6px rgba(0,0,0,0.7);
+        /* Headers - bold + crisp shadow */
+        h1, h2, h3, h4, h5, h6 {{
+            color: #ffffff !important;
+            text-shadow: 0px 2px 6px rgba(0,0,0,0.9);
+            font-weight: 700;
+        }}
+
+        /* Body text - soft contrast */
+        p, span, div {{
+            color: #f0f0f0 !important;
+            text-shadow: 0px 1px 4px rgba(0,0,0,0.6);
+        }}
+
+        /* Sidebar gradient background */
+        section[data-testid="stSidebar"] {{
+            background: linear-gradient(180deg, #0f2027, #203a43, #2c5364);
+            color: #f1f1f1;
+        }}
+        section[data-testid="stSidebar"] * {{
+            color: #e0e0e0 !important;
+        }}
+        section[data-testid="stSidebar"] h1, 
+        section[data-testid="stSidebar"] h2, 
+        section[data-testid="stSidebar"] h3 {{
+            color: #00eaff !important; 
+            text-shadow: 0px 0px 8px rgba(0,234,255,0.8); /* neon glow */
+        }}
+
+        /* Inputs & widgets */
+        .stTextInput, .stSelectbox, .stButton, .stCheckbox {{
+            background-color: rgba(20,20,20,0.6) !important;
+            border-radius: 8px;
+            color: #ffffff !important;
         }}
 
         /* Traffic-light badge */
@@ -87,7 +118,6 @@ def set_background(url: str):
         """,
         unsafe_allow_html=True,
     )
-
 
 # Call function
 set_background("https://i0.wp.com/picjumbo.com/wp-content/uploads/coins-on-table-finance-budgeting-free-image.jpeg?quality=80&w=600")
