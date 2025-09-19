@@ -123,7 +123,7 @@ def set_background(url: str):
 set_background("https://i0.wp.com/picjumbo.com/wp-content/uploads/coins-on-table-finance-budgeting-free-image.jpeg?quality=80&w=600")
 
 # Title
-st.title("📊 SpendWise — Cash Flow & UPI Analyzer (Upgraded Visuals)")
+st.title("📊 SpendWise — Cash Flow & UPI Analyzer")
 
 
 # -------------------- PDF parsing --------------------
