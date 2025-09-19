@@ -53,18 +53,27 @@ def set_background(url: str):
             background-size: cover;
             position: relative;
             min-height: 100vh;
+            color: white; /* global font color */
         }}
         .stApp::before {{
             content: "";
             position: absolute;
             inset: 0;
-            background: rgba(255,255,255,0.44);
+            background: rgba(0,0,0,0.45); /* dark overlay */
             z-index: 0;
             pointer-events: none;
         }}
         .reportview-container .main, .stApp > .main {{
             position: relative;
             z-index: 1;
+        }}
+        /* Global text color */
+        .stApp, .stApp p, .stApp span, .stApp div {{
+            color: #f5f5f5 !important;  /* light gray for readability */
+        }}
+        /* Titles and headers */
+        h1, h2, h3, h4, h5, h6 {{
+            color: #ffffff !important;  /* pure white for headers */
         }}
         /* traffic-light styles */
         .risk-badge {{
@@ -82,6 +91,7 @@ def set_background(url: str):
     )
 
 set_background("https://i0.wp.com/picjumbo.com/wp-content/uploads/coins-on-table-finance-budgeting-free-image.jpeg?quality=80&w=600")
+
 
 st.title("📊 SpendWise — Cash Flow & UPI Analyzer (Upgraded Visuals)")
 
