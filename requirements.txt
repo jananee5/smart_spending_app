@@ -16,6 +16,7 @@ fpdf==1.7.2
 huggingface-hub==0.24.6
 requests==2.32.3
 
+matplotlib
 
 
 
