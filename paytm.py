@@ -58,7 +58,7 @@ def set_background(url: str):
             content: "";
             position: absolute;
             inset: 0;
-            background: rgba(255,255,255,0.88);
+            background: rgba(255,255,255,0.44);
             z-index: 0;
             pointer-events: none;
         }}
